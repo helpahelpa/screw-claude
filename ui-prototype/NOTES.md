@@ -1,0 +1,68 @@
+# UI prototype — throwaway
+
+Question: How can an eight-signal browser diagnostic feel simple, transparent, and calm?
+
+The three initial layouts share the same static specimen content:
+
+- `/?variant=A`: Paper — a spacious editorial introduction above a split diagnostic workspace.
+- `/?variant=B`: Console — a compact dark inspector with a persistent section rail.
+- `/?variant=C`: Focus - the preferred, refined default. A centered introduction using D's copy, one primary scan button, and plain open content sections.
+
+Two additive variants use Taste Skill v2. They originally preserved A/B/C; C was subsequently refined in response to user feedback. The original `styles.css` is still unchanged:
+
+- `/?variant=D`: Overview - a sans-serif introduction beside the actual check controls, followed by two groups of four signal observations.
+- `/?variant=E`: Report - a compact heading, a horizontal score summary, and a continuous report with three meaningful signal groups.
+
+Taste design read: a browser diagnostic for technical users, with a calm, functional aesthetic implemented in native CSS. The existing brand, locale routes, navigation labels, eight signals, sample data, and UI states are preserved. Original brand tokens include the blue accent, scan mark, and `screw/claude` wordmark. A/B/C had editorial, inspector, and centered layouts; D/E explore grouped observations and a report, without revising those originals.
+
+The new variants use local Geist/Geist Mono fonts and Tabler outline icons. D uses `DESIGN_VARIANCE: 6`, `MOTION_INTENSITY: 3`, `VISUAL_DENSITY: 3`; E uses `5 / 2 / 4`. Hover/active feedback is the only motion. One blue accent runs throughout both appearances. Surfaces/dialogs use 16px corners and controls use 8px. The diagnostic itself is the visual focus; decorative photography would not serve this minimal tool. The new CSS and templates are separate files, scoped to D/E. Both follow the system appearance and offer a header toggle; `?theme=dark` or `?theme=light` also previews either appearance. Original A/B/C appearance behavior is unchanged.
+
+Focus has a compact bottom control with previous/next arrows and the current state name. It cycles through ready, checking, low, medium, high, partial, and error screens using the existing localized state labels. Add `?review=1` to compare designs using the full bottom switcher or left/right arrow keys; this replaces the compact state control. `?state=low`, for example, opens a shareable sample result. `?review=0` hides all preview controls for a clean view. English is at `/`; Simplified Chinese is at `/zh/`.
+
+Run from the repository root:
+
+```sh
+python3 ui-prototype/server.py
+```
+
+No dependencies, detection, scoring, social posting, image generation, analytics, persistence, or API calls. Every observation and score is hard-coded sample content. JavaScript changes presentation, opens dialogs, and copies the selected terminal command to the clipboard when requested. Focus has an icon-only copy button for each command, with a brief checkmark and an accessible status announcement after copying. A/B/D/E retain their visual specimen controls. Commands are never executed. A small local CJK font subset ensures the Chinese UI renders on machines without system CJK fonts; its license is included in `fonts/OFL.txt`.
+
+Design direction chosen by the user: C's Focus layout with D's Overview copy. D/E felt crowded and the primary scan action was unclear. C's original slogan and ornamental text were unnecessary. The refinement preserves the centered white/blue design, puts "Check my browser" immediately below the plain headline and intro, and removes the duplicate ready card, numbered sections, privacy badges, and steps. The ready screen lists the eight check names without empty readings or weights. Running/result screens show their observations in an open list. Explanations, terminal commands, and all FAQ answers appear in plain sections; sharing choices are also visible without expandable groups. The user rejected both the original clutter and the subsequent accordion approach, so C contains no accordions or nested disclosures. Results have one primary "Check again" action and a quieter sharing action. The UI remains a static prototype; A/B/D/E are retained for comparison.
+
+The C refinement uses native CSS with `DESIGN_VARIANCE: 4`, `MOTION_INTENSITY: 1`, `VISUAL_DENSITY: 2`. Its text comes directly from D's shared locale copy. It respects system light/dark appearance and accepts `?theme=light` / `?theme=dark`. The logo, color, locale routes, sample fixtures, weights, and eight signals are preserved. C's templates and CSS are isolated in `focus-variant.js` and `focus-variant.css`.
+
+The latest polish adds small Tabler outline icons beside signal names and section headings, increases body text to 15px (16px for the desktop introduction), and adds the compact state control requested by the user. All page, header, footer, and share-dialog text matches the 14 saved English/Chinese state specimens exactly. The state switcher reuses existing labels, updates the URL, preserves keyboard focus, and brings the state panel into view when needed. It changes only presentation. All 42 layout checks passed at 320px, 390px, and 1440px across both locales and all states; the 16 A/B/D/E comparison screens still match. Checked mouse clicks, backwards/forwards wraparound, Enter/Space/Tab, clean/comparison views, sharing, and dark appearance. No JavaScript exceptions, missing assets, horizontal overflow, or accordions.
+
+The icon/type/state-control revision also scored 99 for performance and 100 for accessibility in Lighthouse's mobile audit, with LCP 1.7s, total blocking time 0ms, and CLS 0. Introduction lines are balanced with CSS without modifying the copy.
+
+The terminal copy buttons were checked at 320px, 390px, and 1440px in both locales and appearances. All three raw command strings copied exactly on localhost and through tailnet HTTPS. Keyboard activation preserves focus; repeated copies, feedback reset, and clipboard-denial feedback work. No JavaScript exceptions or horizontal overflow. Lighthouse scored 99 for performance and 100 for accessibility, with LCP 1.7s and CLS 0.
+
+Before removing accordions, verified the refined C in 112 combinations of four widths (320px, 390px, 768px, 1440px), both locales, both appearances, and all seven sample states. The start action fits without scrolling, each screen has at most one primary action, and there is no horizontal overflow. Checked the disclosures, share dialog and Escape dismissal, reset, comparison controls, system appearance changes, explicit appearance overrides, and Chinese glyph coverage. All 16 saved A/B/D/E comparison screens still match. No JavaScript exceptions or missing assets. Lighthouse's mobile audit scored 99 for performance and 100 for accessibility (LCP 1.7s, total blocking time 0ms, CLS 0). Both locale routes and new assets return HTTP 200 through the existing tailnet endpoint.
+
+After the user rejected the accordion approach, checked 25 updated screens covering all seven states, 320px/390px/1440px widths, Chinese, and dark appearance. C has zero `details` or `summary` elements in either the page or share dialog. All seven FAQ answers and three terminal commands are directly visible. The 16 A/B/D/E comparison snapshots still match; scan preview, reset, sharing, and Escape dismissal work. No overflow, missing assets, or JavaScript exceptions. Lighthouse remains 99 for performance / 100 for accessibility, with LCP 1.7s and CLS 0. The tailnet preview serves the changes immediately.
+
+Verified in headless Chrome at 320px, 768px, and 1440px for all seven sample states across all three designs, plus the Chinese result screens. No horizontal overflow or JavaScript exceptions. Checked design and keyboard switching, the state picker, reset, modal opening and Escape dismissal, terminal and FAQ disclosures, hidden review controls, and page loading over tailnet HTTPS. Page assets are served locally; no third-party requests are made.
+
+Before the C refinement, the Taste additions were checked at 320px, 390px, 768px, and 1440px in light and dark appearances, across every sample state, with additional Chinese screens. At that point the 42 saved original A/B/C content and layout snapshots still matched; the original stylesheet was byte-identical. Both new layouts scored 100 for performance and 100 for accessibility in Lighthouse's simulated mobile audit: LCP 1.5s, total blocking time 0ms, and CLS 0.013 for D / 0 for E. Their fonts use small local WOFF2 subsets; the preview server compresses HTML, CSS, JavaScript, and SVG responses without changing their decoded contents.
+
+The preview initially used foreground tool sessions. Both processes ended after the chat turn, removing the endpoint and causing `ERR_CONNECTION_TIMED_OUT`. The server now runs as a transient systemd user service; Tailscale manages the dedicated background endpoint. Both outlive a chat turn. Existing services are left in place.
+
+Start the temporary preview from the repository root:
+
+```sh
+systemd-run --user --unit=screw-claude-ui-preview --collect \
+  --working-directory="$PWD" --property=Restart=on-failure \
+  /usr/bin/python3 "$PWD/ui-prototype/server.py"
+tailscale serve --bg --https=9445 http://127.0.0.1:4173
+```
+
+Preview: `https://desktop-7r2lmnh.tail786efd.ts.net:9445/` (tailnet only).
+
+Stop the temporary preview and remove only its forwarding endpoint:
+
+```sh
+tailscale serve --https=9445 off
+systemctl --user stop screw-claude-ui-preview.service
+```
+
+Do not use `tailscale serve reset`. The systemd service is transient and is not enabled at boot. After the lifecycle fix, both language routes returned HTTP 200 over tailnet HTTPS from a separate tool invocation, and the server unit remained active.
