@@ -22,7 +22,7 @@ import {
 } from '../src/content/locales.ts';
 import type { LocaleId } from '../src/content/locales.ts';
 import { RULES } from '../src/core/rules.ts';
-import { SITE, localeUrl, shareUrl } from '../src/content/site.ts';
+import { SITE, assetPath, basePathFrom, localeUrl, normalizeBase, shareUrl } from '../src/content/site.ts';
 import { runScan } from '../src/scan/controller.ts';
 import { buildSummary, buildPlatformText } from '../src/sharing/text.ts';
 import { fakeSource } from './fixtures.ts';
@@ -132,6 +132,14 @@ describe('route language', () => {
     assert.equal(localeFromPath('/ru/anything'), 'ru');
     assert.equal(localeFromPath('/de/'), 'en');
     assert.equal(localeFromPath('/ruins'), 'en');
+    // A project subdirectory mount (GitHub Pages) must agree with the root.
+    assert.equal(localeFromPath('/screw-claude/'), 'en');
+    assert.equal(localeFromPath('/screw-claude'), 'en');
+    assert.equal(localeFromPath('/screw-claude/zh/'), 'zh');
+    assert.equal(localeFromPath('/screw-claude/zh/index.html'), 'zh');
+    assert.equal(localeFromPath('/screw-claude/ru/'), 'ru');
+    assert.equal(localeFromPath('/screw-claude/ru'), 'ru');
+    assert.equal(localeFromPath('/screw-claude/unknown/'), 'en');
   });
 
   it('round-trips locale to path to locale', () => {
@@ -208,15 +216,42 @@ describe('terminal commands', () => {
 });
 
 describe('site metadata', () => {
-  it('builds localized canonical URLs', () => {
-    assert.equal(localeUrl('en', 'https://example.test'), 'https://example.test/');
-    assert.equal(localeUrl('zh', 'https://example.test'), 'https://example.test/zh/');
-    assert.equal(localeUrl('ru', 'https://example.test'), 'https://example.test/ru/');
+  it('builds localized canonical URLs for the deployment', () => {
+    assert.equal(SITE.origin, 'https://helpahelpa.github.io');
+    assert.equal(SITE.basePath, '/screw-claude/');
+    assert.equal(localeUrl('en', 'https://example.test', '/'), 'https://example.test/');
+    assert.equal(localeUrl('zh', 'https://example.test', '/'), 'https://example.test/zh/');
+    assert.equal(localeUrl('ru', 'https://example.test', '/'), 'https://example.test/ru/');
+    assert.equal(localeUrl('en'), 'https://helpahelpa.github.io/screw-claude/');
+    assert.equal(localeUrl('zh'), 'https://helpahelpa.github.io/screw-claude/zh/');
   });
 
-  it('prefers the live origin over the configured one', () => {
-    assert.equal(shareUrl('zh', { origin: 'http://127.0.0.1:4173', protocol: 'http:' }), 'http://127.0.0.1:4173/zh/');
+  it('tracks the live mount point for runtime URLs', () => {
+    const local = { origin: 'http://127.0.0.1:4173', protocol: 'http:', pathname: '/zh/' };
+    assert.equal(shareUrl('zh', local), 'http://127.0.0.1:4173/zh/');
+    assert.equal(shareUrl('en', local), 'http://127.0.0.1:4173/');
+    const pages = { origin: 'https://helpahelpa.github.io', protocol: 'https:', pathname: '/screw-claude/ru/' };
+    assert.equal(shareUrl('ru', pages), 'https://helpahelpa.github.io/screw-claude/ru/');
+    assert.equal(shareUrl('en', pages), 'https://helpahelpa.github.io/screw-claude/');
     assert.equal(shareUrl('en', { origin: 'file://', protocol: 'file:' }), localeUrl('en'));
+  });
+
+  it('normalizes mount points for absolute metadata', () => {
+    assert.equal(normalizeBase('/'), '/');
+    assert.equal(normalizeBase(''), '/');
+    assert.equal(normalizeBase('screw-claude'), '/screw-claude/');
+    assert.equal(normalizeBase('/screw-claude'), '/screw-claude/');
+    assert.equal(normalizeBase('/screw-claude///'), '/screw-claude/');
+    assert.equal(basePathFrom('/'), '/');
+    assert.equal(basePathFrom('/index.html'), '/');
+    assert.equal(basePathFrom('/zh/'), '/');
+    assert.equal(basePathFrom('/zh/index.html'), '/');
+    assert.equal(basePathFrom('/screw-claude/'), '/screw-claude/');
+    assert.equal(basePathFrom('/screw-claude/zh/'), '/screw-claude/');
+    assert.equal(basePathFrom('/screw-claude/ru/index.html'), '/screw-claude/');
+    assert.equal(basePathFrom('/deep/nested/page/'), '/deep/nested/page/');
+    assert.equal(assetPath('taste-assets/tabler.svg', { pathname: '/screw-claude/zh/' }), '/screw-claude/taste-assets/tabler.svg');
+    assert.equal(assetPath('/favicon.svg', { pathname: '/' }), '/favicon.svg');
   });
 
   it('keeps analytics off by default', () => {

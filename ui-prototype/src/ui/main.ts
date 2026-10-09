@@ -14,7 +14,7 @@ import type { ScanController, ScanState, SignalId } from '../core/types.ts';
 import { COMMANDS } from '../content/commands.ts';
 import { dictionary, localeFromPath } from '../content/locales.ts';
 import type { LocaleId } from '../content/locales.ts';
-import { SITE, shareUrl } from '../content/site.ts';
+import { SITE, assetPath, basePathFrom, shareUrl } from '../content/site.ts';
 import { createScanController } from '../scan/controller.ts';
 import { copyText } from '../sharing/clipboard.ts';
 import { createImageCache, deliverResultImage } from '../sharing/image.ts';
@@ -90,6 +90,9 @@ function buildViewModel(): ViewModel {
     locale,
     messages,
     state: currentState(),
+    // Mount point of the running page, so every link works under a subdirectory.
+    // Origin-relative with a trailing slash: links append a route such as `zh/`.
+    root: basePathFrom(location.pathname),
     query: options.query ?? '',
     hash: options.hash ?? '',
     preview: options.preview ?? null,
@@ -442,6 +445,8 @@ declare global {
       analytics: typeof analytics;
       /** Read-only snapshot of the on-page state (live scan or review preview). */
       getState: () => ScanState;
+      localeForPath: (pathname: string) => LocaleId;
+      assetUrl: (path: string) => string;
     };
   }
 }
@@ -455,6 +460,9 @@ if (typeof window !== 'undefined') {
     // Read-only view of the current in-memory state, for tests and integrations.
     // Nothing here is persisted or transmitted.
     getState: () => currentState(),
+    localeForPath: localeFromPath,
+    /** Mount-relative URL of an app asset, for the classic-script specimens. */
+    assetUrl: (path: string) => assetPath(path, location),
   };
   analytics.pageView();
 }

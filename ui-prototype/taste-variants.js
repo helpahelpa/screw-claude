@@ -77,7 +77,10 @@ window.TasteVariants = (() => {
   };
   const copy = () => texts[locale];
   const clean = value => escapeHtml(String(value).replace(/[—–]/g, '-'));
-  const glyph = name => `<svg class="taste-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="/taste-assets/tabler.svg#${name}"></use></svg>`;
+  const sprite = window.ScrewClaude?.assetUrl
+    ? window.ScrewClaude.assetUrl('taste-assets/tabler.svg')
+    : 'taste-assets/tabler.svg';
+  const glyph = name => `<svg class="taste-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="${sprite}#${name}"></use></svg>`;
   const isActive = key => key === 'D' || key === 'E';
   const effectiveTheme = () => theme === 'auto' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme;
 

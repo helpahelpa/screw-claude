@@ -114,7 +114,7 @@ npm run smoke       # headless Chrome check over the DevTools protocol
 npm run check       # typecheck + build + test + smoke
 ```
 
-`npm test` and `npm run smoke` need the static server on `http://127.0.0.1:4173` (the smoke check drives a real browser). `npm run build` output is deterministic and committed, and the build suite fails if `dist/` or the generated metadata is stale.
+`npm test` and `npm run smoke` need the static server on `http://127.0.0.1:4173` (the smoke check drives a real browser). `npm run build` output is deterministic and committed, and the build suite fails if `dist/` or the generated metadata is stale. `npm test` runs 316 cases.
 
 ### Review URLs
 
@@ -146,11 +146,31 @@ Review previews are not mock strings: each one runs the real controller over an 
 
 ### Verification
 
-- 307 unit tests: rule tables and fixtures (Chinese, Russian, aliases, lowercase zones, script tags, overlapping browser/device markers, unknown platforms), font and voice permutations, weight rounding and the 30/31 and 60/61 boundaries, controller lifecycle (duplicate starts, detector exceptions, fresh reruns, abort, disposal, lock release), content parity across the three dictionaries, sharing (summary, links, clipboard denial, PNG generation, delivery order, canceled share), privacy (no network during scans with analytics on or off), the deterministic build against the committed artifacts, and a source-hygiene scan for network or storage calls.
-- A dependency-free CDP smoke check drives a real headless Chrome through all three routes: it runs an actual scan, verifies that the nine observations and the score agree with the sum of contributions, opens the share dialog, checks the four social links and three copy platforms, copies a terminal command, renders review previews, inspects the generated 1200×630 card, confirms zero third-party requests, and verifies the CJK subset covers every rendered character.
+- 316 unit tests: rule tables and fixtures (Chinese, Russian, aliases, lowercase zones, script tags, overlapping browser/device markers, unknown platforms), font and voice permutations, weight rounding and the 30/31 and 60/61 boundaries, controller lifecycle (duplicate starts, detector exceptions, fresh reruns, abort, disposal, lock release), content parity across the three dictionaries, sharing (summary, links, clipboard denial, PNG generation, delivery order, canceled share), privacy (no network during scans with analytics on or off), the deterministic build against the committed artifacts, and a source-hygiene scan for network or storage calls.
+- A dependency-free CDP smoke check (261 checks) drives a real headless Chrome through all three routes: it runs an actual scan, verifies that the nine observations and the score agree with the sum of contributions, opens the share dialog, checks the four social links and three copy platforms, copies a terminal command, renders review previews, inspects the generated 1200×630 card, confirms zero third-party requests, and verifies the CJK subset covers every rendered character.
 
 ### Not verified here
 
 - **Native sharing on a real device.** The share-sheet path is covered by unit tests with injected environments and by the browser check confirming the "no system sharing" fallback; an actual iOS/Android share sheet needs a real device.
 - **HTTPS hosting.** Routes, metadata, sitemap, manifest and clipboard behaviour are verified over `http://127.0.0.1:4173`; the tailnet endpoint above serves the same files over HTTPS.
 - **Browsers other than Chromium.** The smoke check drives ten user agents through the real detectors, but only Chromium renders them; engine-specific font metrics or clipboard differences are not exercised.
+
+## GitHub Pages deployment
+
+The site is published from this directory by `.github/workflows/deploy-pages.yml` on every push to `main`:
+
+```sh
+gh workflow run deploy-pages.yml     # or just push to main
+gh run watch                          # follow the build and deploy
+```
+
+Published at **https://helpahelpa.github.io/screw-claude/** (`/zh/` and `/ru/` for the other languages).
+
+Two rules make one build work both locally and under a project subdirectory:
+
+- **Runtime URLs are mount-relative.** `src/content/paths.ts` derives the mount point from the page's own pathname, so `/zh/`, `/screw-claude/zh/` and any future subdirectory agree. Shell asset references are `./`- and `../`-relative, sprite references are origin-relative, and share payloads use the live origin plus mount point. Nothing about the running page needs to know it is on Pages.
+- **The manifest is mount-agnostic.** `start_url`, `scope` and the icon sources are relative, so they resolve against the manifest itself at either mount point.
+
+`SITE.origin` and `SITE.basePath` describe the *deployment* and are used only for absolute metadata: canonical and alternate links, Open Graph and Twitter images, structured data, `sitemap.xml` and `robots.txt`. Change both together if the site moves, then run `npm run build`.
+
+`npm run smoke` now includes a `mounted` pass: it serves the built output under `/screw-claude/` from a throwaway in-process server and repeats the page, scan, sharing, metadata and asset checks there, which is exactly the Pages layout.

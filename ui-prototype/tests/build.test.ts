@@ -13,6 +13,11 @@ const ROOT = path.join(import.meta.dirname, '..');
 const ROUTES = ['index.html', 'zh/index.html', 'ru/index.html'];
 const ARTIFACTS = [...ROUTES, 'sitemap.xml', 'robots.txt', 'site.webmanifest'];
 
+/** The deployment the committed metadata describes (GitHub Pages project page). */
+const ORIGIN = 'https://helpahelpa.github.io';
+const BASE = '/screw-claude/';
+const HOME = `${ORIGIN}${BASE}`;
+
 function sha(content: string | Buffer): string {
   return createHash('sha256').update(content).digest('hex');
 }
@@ -109,14 +114,16 @@ describe('committed artifacts', () => {
   it('serves the live application from each route shell', async () => {
     for (const route of ROUTES) {
       const html = await readFile(path.join(ROOT, route), 'utf8');
-      assert.match(html, /<script type="module" src="\/dist\/ui\/main\.js"><\/script>/);
-      assert.match(html, /<link rel="manifest" href="\/site\.webmanifest">/);
-      assert.match(html, /<link rel="icon" href="\/favicon\.svg"/);
+      // Asset references are relative, so the site works at any mount point.
+      assert.match(html, /<script type="module" src="(?:\.\.?\/)?dist\/ui\/main\.js"><\/script>/);
+      assert.match(html, /<link rel="manifest" href="(?:\.\.?\/)?site\.webmanifest">/);
+      assert.match(html, /<link rel="icon" href="(?:\.\.?\/)?favicon\.svg"/);
+      assert.equal(/="\/(?:dist|styles|taste-variants|focus-|favicon|site\.webmanifest)/.test(html), false);
       assert.match(html, /focus-live\.css/);
       assert.equal(html.includes('focus-variant.js'), false, `${route} still loads the retired renderer`);
       // The markers stay in place so the build can be re-run; the block must be filled.
       assert.ok(html.includes('<!-- meta:start -->') && html.includes('<!-- meta:end -->'), `${route} markers`);
-      assert.match(html, /<link rel="canonical" href="https:\/\/screw-claude\.example[^"]*">/);
+      assert.match(html, new RegExp(`<link rel="canonical" href="${HOME.replace(/[/.]/g, '\\$&')}[^"]*">`));
     }
   });
 
@@ -129,9 +136,9 @@ describe('committed artifacts', () => {
 describe('metadata artifacts', () => {
   it('writes localized canonical, alternate and social tags per route', async () => {
     const expectations: [string, string, string][] = [
-      ['index.html', 'https://screw-claude.example/', 'en'],
-      ['zh/index.html', 'https://screw-claude.example/zh/', 'zh-CN'],
-      ['ru/index.html', 'https://screw-claude.example/ru/', 'ru'],
+      ['index.html', HOME, 'en'],
+      ['zh/index.html', `${HOME}zh/`, 'zh-CN'],
+      ['ru/index.html', `${HOME}ru/`, 'ru'],
     ];
     for (const [route, canonical, hreflang] of expectations) {
       const html = await readFile(path.join(ROOT, route), 'utf8');
@@ -163,7 +170,7 @@ describe('metadata artifacts', () => {
 
   it('lists every route in the sitemap with alternates', async () => {
     const sitemap = await readFile(path.join(ROOT, 'sitemap.xml'), 'utf8');
-    for (const url of ['https://screw-claude.example/', 'https://screw-claude.example/zh/', 'https://screw-claude.example/ru/']) {
+    for (const url of [HOME, `${HOME}zh/`, `${HOME}ru/`]) {
       assert.ok(sitemap.includes(`<loc>${url}</loc>`), `sitemap missing ${url}`);
     }
     assert.equal((sitemap.match(/<url>/g) ?? []).length, 3);
@@ -176,17 +183,26 @@ describe('metadata artifacts', () => {
     const robots = await readFile(path.join(ROOT, 'robots.txt'), 'utf8');
     assert.match(robots, /User-agent: \*/);
     assert.equal(/Disallow: \/\S/.test(robots), false);
-    assert.ok(robots.includes('https://screw-claude.example/sitemap.xml'));
+    assert.ok(robots.includes(`${HOME}sitemap.xml`));
   });
 
   it('ships a web app manifest with maskable icons', async () => {
     const manifest = JSON.parse(await readFile(path.join(ROOT, 'site.webmanifest'), 'utf8'));
-    assert.equal(manifest.start_url, '/');
+    // Relative manifest URLs resolve against the manifest, so one file works at
+    // the domain root and under a project subdirectory.
+    assert.equal(manifest.start_url, './');
+    assert.equal(manifest.scope, './');
     assert.equal(manifest.display, 'standalone');
     assert.equal(manifest.theme_color, '#3457c9');
     assert.ok(manifest.icons.some((icon: { purpose: string }) => icon.purpose === 'maskable'));
-    assert.ok(manifest.icons.some((icon: { src: string }) => icon.src === '/assets/icon.svg'));
+    assert.ok(manifest.icons.some((icon: { src: string }) => icon.src === 'assets/icon.svg'));
+    assert.equal(manifest.icons.every((icon: { src: string }) => !icon.src.startsWith('/')), true);
     assert.equal(manifest.lang, 'en');
+  });
+
+  it('ships a .nojekyll marker so Pages serves every file verbatim', async () => {
+    const marker = await stat(path.join(ROOT, '.nojekyll'));
+    assert.equal(marker.isFile(), true);
   });
 
   it('has the referenced icons on disk', async () => {
@@ -199,6 +215,7 @@ describe('metadata artifacts', () => {
 
 describe('static hosting boundaries', () => {
   const ALLOWED_HOSTS = new Set([
+    'helpahelpa.github.io',
     'screw-claude.example',
     'twitter.com',
     'www.facebook.com',

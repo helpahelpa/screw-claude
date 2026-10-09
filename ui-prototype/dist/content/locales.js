@@ -6,6 +6,8 @@
  * the route and never from the detected browser locale.
  */
 
+import { basePathFrom } from './paths.js';
+
                                           
 
                            
@@ -849,9 +851,14 @@ const RU           = {
 
 export const LOCALES                             = { en: EN, zh: ZH, ru: RU };
 
-/** Content language from the route, independent of any browser preference. */
+/**
+ * Content language from the route, independent of any browser preference.
+ * The mount point is stripped first, so `/zh/` and `/screw-claude/zh/` agree.
+ */
 export function localeFromPath(pathname        )           {
-  const match = /^\/(zh|ru)(?:\/|$)/.exec(pathname);
+  const base = basePathFrom(pathname);
+  const rest = `/${(pathname || '/').slice(base.length).replace(/^\/+/, '')}`;
+  const match = /^\/(zh|ru)(?:\/|$)/.exec(rest);
   return (match?.[1]            ) ?? DEFAULT_LOCALE;
 }
 

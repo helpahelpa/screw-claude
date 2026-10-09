@@ -1,5 +1,7 @@
 /* THROWAWAY UI: original layouts plus additive Taste variants; no diagnostic logic. */
-const locale = /^\/(zh|ru)(?:\/|$)/.exec(location.pathname)?.[1] || 'en';
+const locale = window.ScrewClaude?.localeForPath
+  ? window.ScrewClaude.localeForPath(location.pathname)
+  : /^\/(zh|ru)(?:\/|$)/.exec(location.pathname)?.[1] || 'en';
 const localePath = locale === 'en' ? '/' : `/${locale}/`;
 const messages = {
   en: {

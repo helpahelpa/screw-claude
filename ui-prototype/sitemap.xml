@@ -1,24 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>https://screw-claude.example/</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://screw-claude.example/"/>
-    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://screw-claude.example/zh/"/>
-    <xhtml:link rel="alternate" hreflang="ru" href="https://screw-claude.example/ru/"/>
+    <loc>https://helpahelpa.github.io/screw-claude/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://helpahelpa.github.io/screw-claude/"/>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://helpahelpa.github.io/screw-claude/zh/"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://helpahelpa.github.io/screw-claude/ru/"/>
     <changefreq>monthly</changefreq>
   </url>
   <url>
-    <loc>https://screw-claude.example/zh/</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://screw-claude.example/"/>
-    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://screw-claude.example/zh/"/>
-    <xhtml:link rel="alternate" hreflang="ru" href="https://screw-claude.example/ru/"/>
+    <loc>https://helpahelpa.github.io/screw-claude/zh/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://helpahelpa.github.io/screw-claude/"/>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://helpahelpa.github.io/screw-claude/zh/"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://helpahelpa.github.io/screw-claude/ru/"/>
     <changefreq>monthly</changefreq>
   </url>
   <url>
-    <loc>https://screw-claude.example/ru/</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://screw-claude.example/"/>
-    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://screw-claude.example/zh/"/>
-    <xhtml:link rel="alternate" hreflang="ru" href="https://screw-claude.example/ru/"/>
+    <loc>https://helpahelpa.github.io/screw-claude/ru/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://helpahelpa.github.io/screw-claude/"/>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://helpahelpa.github.io/screw-claude/zh/"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://helpahelpa.github.io/screw-claude/ru/"/>
     <changefreq>monthly</changefreq>
   </url>
 </urlset>

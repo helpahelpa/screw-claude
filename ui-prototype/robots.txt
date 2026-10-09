@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://screw-claude.example/sitemap.xml
+Sitemap: https://helpahelpa.github.io/screw-claude/sitemap.xml

@@ -10,7 +10,8 @@
  */
 
 import { spawn } from 'node:child_process';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { createServer } from 'node:http';
+import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -21,6 +22,9 @@ const argValue = (name, fallback) => {
 };
 
 const PORT = Number(argValue('--port', '4173'));
+const MOUNT_PORT = Number(argValue('--mount-port', '4199'));
+const MOUNT_BASE = '/screw-claude/';
+const SKIP_MOUNTED = args.includes('--no-mounted-pass');
 const CHROME = argValue('--chrome', 'google-chrome');
 const BASE = `http://127.0.0.1:${PORT}`;
 
@@ -108,6 +112,20 @@ class Cdp {
     return this.events
       .filter(event => event.method === 'Network.requestWillBeSent')
       .map(event => event.params.request.url);
+  }
+
+  failedRequests() {
+    return this.events
+      .filter(
+        event =>
+          event.method === 'Network.loadingFailed' ||
+          (event.method === 'Network.responseReceived' && event.params.response.status >= 400),
+      )
+      .map(event =>
+        event.method === 'Network.loadingFailed'
+          ? `${event.params.errorText ?? 'failed'} ${event.params.requestId}`
+          : `${event.params.response.status} ${event.params.response.url}`,
+      );
   }
 
   clearEvents() {
@@ -553,7 +571,9 @@ async function checkHostingArtifacts() {
     );
     if (kind === 'json') {
       const manifest = JSON.parse(body);
-      check(manifest.start_url === '/', `${pathname}: declares a start URL`);
+      // Relative values keep the manifest valid at any mount point.
+      check(manifest.start_url === './', `${pathname}: declares a mount-relative start URL`);
+      check(!/^https?:/.test(manifest.start_url), `${pathname}: the start URL is not absolute`);
       check(
         manifest.icons?.some(icon => icon.purpose === 'maskable'),
         `${pathname}: declares a maskable icon`,
@@ -600,6 +620,130 @@ async function checkNarrowLayout(cdp) {
   check(errors.length === 0, `${name}: no errors on a narrow screen${errors.length ? ` -> ${errors.join(' | ')}` : ''}`);
 }
 
+/**
+ * Serve the built site under a project subdirectory, exactly like GitHub Pages
+ * does for a project page, so the mount-relative URLs are verified for real.
+ */
+const CONTENT_TYPES = {
+  '.html': 'text/html',
+  '.js': 'text/javascript',
+  '.css': 'text/css',
+  '.svg': 'image/svg+xml',
+  '.woff2': 'font/woff2',
+  '.ttf': 'font/ttf',
+  '.webmanifest': 'application/manifest+json',
+  '.xml': 'application/xml',
+  '.txt': 'text/plain',
+  '.json': 'application/json',
+  '.png': 'image/png',
+};
+
+async function startMountedServer() {
+  const siteRoot = path.join(import.meta.dirname, '..');
+  const server = createServer(async (request, response) => {
+    const pathname = decodeURIComponent(new URL(request.url ?? '/', 'http://127.0.0.1').pathname);
+    if (!pathname.startsWith(MOUNT_BASE)) {
+      response.writeHead(404, { 'content-type': 'text/plain' });
+      response.end('outside the mount point');
+      return;
+    }
+    const relative = pathname.slice(MOUNT_BASE.length);
+    const candidates =
+      relative === '' || relative.endsWith('/')
+        ? [`${relative}index.html`]
+        : [relative, `${relative}/index.html`];
+    for (const candidate of candidates) {
+      const file = path.join(siteRoot, candidate);
+      try {
+        const info = await stat(file);
+        if (!info.isFile()) continue;
+        response.writeHead(200, {
+          'content-type': CONTENT_TYPES[path.extname(file)] ?? 'application/octet-stream',
+        });
+        response.end(await readFile(file));
+        return;
+      } catch {
+        /* Try the next candidate. */
+      }
+    }
+    response.writeHead(404, { 'content-type': 'text/plain' });
+    response.end('not found');
+  });
+  await new Promise(resolve => server.listen(MOUNT_PORT, '127.0.0.1', resolve));
+  return { server, origin: `http://127.0.0.1:${MOUNT_PORT}${MOUNT_BASE}` };
+}
+
+/** Verify the site under a project subdirectory, the GitHub Pages layout. */
+async function checkMountedSite(cdp) {
+  const { server, origin } = await startMountedServer();
+  try {
+    for (const [locale, route] of [['en', ''], ['zh', 'zh/'], ['ru', 'ru/']]) {
+      const name = `mounted ${MOUNT_BASE}${route || ''}`;
+      await navigate(cdp, `${origin}${route}`, name);
+
+      const shell = JSON.parse(
+        await cdp.evaluate(`JSON.stringify({
+          signals: document.querySelectorAll('.focus-signal').length,
+          variant: document.body.dataset.variant,
+          root: window.ScrewClaude?.getState ? document.querySelector('.brand')?.getAttribute('href') : '',
+          languages: [...document.querySelectorAll('.languages a')].map(a => a.getAttribute('href')),
+          sprite: document.querySelector('svg use')?.getAttribute('href') ?? '',
+          font: document.fonts.check('16px "Taste CJK"'),
+        })`),
+      );
+      check(shell.variant === 'C', `${name}: the live presentation mounts under a subdirectory`);
+      check(shell.signals === 9, `${name}: nine observations render (got ${shell.signals})`);
+      check(
+        shell.languages.every(href => href.startsWith(MOUNT_BASE)),
+        `${name}: language links keep the mount point (${shell.languages.join(' ')})`,
+      );
+      check(shell.sprite.startsWith(MOUNT_BASE), `${name}: sprite references keep the mount point (${shell.sprite})`);
+      check(shell.font, `${name}: the bundled CJK subset still loads`);
+
+      await cdp.evaluate(`document.querySelector('[data-action="start"]').click()`);
+      const done = await waitFor(cdp, `!!window.ScrewClaude?.getState()?.result`, `${name}: scan completes`);
+      if (!done) continue;
+
+      const result = JSON.parse(await cdp.evaluate(`JSON.stringify(window.ScrewClaude.getState().result)`));
+      const sum = result.signals.reduce((total, signal) => total + signal.contribution, 0);
+      check(sum === result.total, `${name}: the score is the sum of contributions (${result.total})`);
+      check(result.signals.length === 9, `${name}: all nine checks reported`);
+
+      const summary = await cdp.evaluate(`window.ScrewClaude.getState().result ? document.querySelector('[data-action="share"]') !== null : false`);
+      check(summary, `${name}: sharing is offered after a scan`);
+
+      const link = JSON.parse(
+        await cdp.evaluate(`JSON.stringify([...document.querySelectorAll('.languages a')].map(a => a.href))`),
+      );
+      check(
+        link.every(href => href.includes(MOUNT_BASE)),
+        `${name}: resolved language links include the mount point`,
+      );
+
+      const metadata = JSON.parse(
+        await cdp.evaluate(`JSON.stringify({
+          canonical: document.querySelector('link[rel="canonical"]')?.href ?? '',
+          manifest: document.querySelector('link[rel="manifest"]')?.href ?? '',
+          ogImage: document.querySelector('meta[property="og:image"]')?.content ?? '',
+        })`),
+      );
+      check(
+        metadata.canonical.includes('/screw-claude/') && metadata.ogImage.includes('/screw-claude/assets/'),
+        `${name}: metadata uses the configured mount point`,
+      );
+      check(metadata.manifest.includes(MOUNT_BASE), `${name}: the manifest resolves under the mount point`);
+
+      const failed = cdp.failedRequests();
+      check(failed.length === 0, `${name}: every asset loads${failed.length ? ` -> ${failed.join(', ')}` : ''}`);
+      const errors = cdp.takeErrors();
+      check(errors.length === 0, `${name}: no errors${errors.length ? ` -> ${errors.join(' | ')}` : ''}`);
+      void locale;
+    }
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+  }
+}
+
 async function main() {
   const { child, profile, port } = await launchChrome();
   let cdp;
@@ -618,6 +762,7 @@ async function main() {
     await checkUserAgents(cdp);
     await checkHostingArtifacts();
     await checkNarrowLayout(cdp);
+    if (!SKIP_MOUNTED) await checkMountedSite(cdp);
   } finally {
     try {
       cdp?.socket.close();

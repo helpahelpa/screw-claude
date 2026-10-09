@@ -62,7 +62,7 @@ function escapeAttribute(value) {
   return String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-function structuredData(locale, messages, url, origin) {
+function structuredData(locale, messages, url, home) {
   const graph = [
     {
       '@type': 'WebApplication',
@@ -88,7 +88,7 @@ function structuredData(locale, messages, url, origin) {
     {
       '@type': 'WebSite',
       name: 'screw/claude',
-      url: `${origin}/`,
+      url: home,
       inLanguage: locale,
     },
   ];
@@ -100,16 +100,21 @@ function metaBlock(locale, { locales, site }) {
   const messages = locales.LOCALES[locale];
   const url = site.localeUrl(locale);
   const origin = site.SITE.origin.replace(/\/$/, '');
-  const preview = `${origin}/assets/social-preview.svg`;
+  const base = site.normalizeBase(site.SITE.basePath);
+  const home = `${origin}${base}`;
+  const preview = `${home}assets/social-preview.svg`;
   const alternates = Object.entries(locales.LOCALE_ROUTES)
-    .map(([id, route]) => `    <link rel="alternate" hreflang="${locales.HTML_LANG[id]}" href="${origin}${route}">`)
+    .map(
+      ([id, route]) =>
+        `    <link rel="alternate" hreflang="${locales.HTML_LANG[id]}" href="${home}${route.replace(/^\//, '')}">`,
+    )
     .join('\n');
   return [
     `    <title>${escapeAttribute(messages.title)}</title>`,
     `    <meta name="description" content="${escapeAttribute(messages.description)}">`,
     `    <link rel="canonical" href="${url}">`,
     alternates,
-    `    <link rel="alternate" hreflang="x-default" href="${origin}/">`,
+    `    <link rel="alternate" hreflang="x-default" href="${home}">`,
     `    <meta name="robots" content="index, follow">`,
     `    <meta property="og:type" content="website">`,
     `    <meta property="og:site_name" content="screw/claude">`,
@@ -126,7 +131,7 @@ function metaBlock(locale, { locales, site }) {
     `    <meta name="twitter:description" content="${escapeAttribute(messages.description)}">`,
     `    <meta name="twitter:image" content="${preview}">`,
     `    <script type="application/ld+json">`,
-    structuredData(locale, messages, url, origin)
+    structuredData(locale, messages, url, home)
       .split('\n')
       .map(line => `    ${line}`)
       .join('\n'),
@@ -152,17 +157,18 @@ export async function buildRoutes({ locales, site }) {
 }
 
 export async function buildSitemap({ locales, site }) {
-  const origin = site.SITE.origin.replace(/\/$/, '');
+  const home = `${site.SITE.origin.replace(/\/$/, '')}${site.normalizeBase(site.SITE.basePath)}`;
+  const href = route => `${home}${route.replace(/^\//, '')}`;
   const alternates = Object.entries(locales.LOCALE_ROUTES)
     .map(
       ([id, route]) =>
-        `    <xhtml:link rel="alternate" hreflang="${locales.HTML_LANG[id]}" href="${origin}${route}"/>`,
+        `    <xhtml:link rel="alternate" hreflang="${locales.HTML_LANG[id]}" href="${href(route)}"/>`,
     )
     .join('\n');
   const entries = Object.entries(locales.LOCALE_ROUTES)
     .map(
       ([locale, route]) =>
-        `  <url>\n    <loc>${origin}${route}</loc>\n${alternates}\n    <changefreq>monthly</changefreq>\n  </url>`,
+        `  <url>\n    <loc>${href(route)}</loc>\n${alternates}\n    <changefreq>monthly</changefreq>\n  </url>`,
     )
     .join('\n');
   const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${entries}\n</urlset>\n`;
@@ -171,19 +177,22 @@ export async function buildSitemap({ locales, site }) {
 }
 
 export async function buildRobots({ site }) {
-  const text = `User-agent: *\nAllow: /\n\nSitemap: ${site.SITE.origin.replace(/\/$/, '')}/sitemap.xml\n`;
+  const home = `${site.SITE.origin.replace(/\/$/, '')}${site.normalizeBase(site.SITE.basePath)}`;
+  const text = `User-agent: *\nAllow: /\n\nSitemap: ${home}sitemap.xml\n`;
   await writeFile(path.join(root, 'robots.txt'), text);
   return 'robots.txt';
 }
 
-export async function buildManifest({ locales, site }) {
+export async function buildManifest({ locales }) {
   const messages = locales.LOCALES.en;
+  // Manifest URLs resolve against the manifest itself, so relative values keep
+  // the app installable at any mount point without a rebuild.
   const manifest = {
     name: 'screw/claude — browser environment diagnostic',
     short_name: 'screw/claude',
     description: messages.description,
-    start_url: '/',
-    scope: '/',
+    start_url: './',
+    scope: './',
     display: 'standalone',
     lang: 'en',
     dir: 'ltr',
@@ -191,10 +200,9 @@ export async function buildManifest({ locales, site }) {
     theme_color: '#3457c9',
     categories: ['utilities', 'privacy'],
     icons: [
-      { src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
-      { src: '/assets/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
+      { src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+      { src: 'assets/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
     ],
-    id: site.SITE.origin.replace(/\/$/, '') + '/',
   };
   await writeFile(path.join(root, 'site.webmanifest'), `${JSON.stringify(manifest, null, 2)}\n`);
   return 'site.webmanifest';
@@ -206,7 +214,7 @@ async function main() {
   const routes = await buildRoutes({ locales, site });
   const sitemap = await buildSitemap({ locales, site });
   const robots = await buildRobots({ site });
-  const manifest = await buildManifest({ locales, site });
+  const manifest = await buildManifest({ locales });
   console.log(`Compiled ${modules.length} modules to dist/`);
   for (const file of [...routes, sitemap, robots, manifest]) console.log(`Wrote ${file}`);
 }

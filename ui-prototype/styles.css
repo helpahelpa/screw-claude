@@ -1,7 +1,7 @@
 /* THROWAWAY UI. All assets are local; no external requests or detected signals. */
 @font-face {
   font-family: 'Prototype CJK';
-  src: url('/fonts/ui-cjk.ttf') format('truetype');
+  src: url('fonts/ui-cjk.ttf') format('truetype');
   font-weight: 400;
   font-display: swap;
   unicode-range: U+3000-303F, U+3400-9FFF, U+FF00-FFEF;

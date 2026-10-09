@@ -14,7 +14,7 @@ import { RULES } from '../core/rules.js';
 import { COMMANDS } from '../content/commands.js';
 import { dictionary, localeFromPath } from '../content/locales.js';
                                                       
-import { SITE, shareUrl } from '../content/site.js';
+import { SITE, assetPath, basePathFrom, shareUrl } from '../content/site.js';
 import { createScanController } from '../scan/controller.js';
 import { copyText } from '../sharing/clipboard.js';
 import { createImageCache, deliverResultImage } from '../sharing/image.js';
@@ -90,6 +90,9 @@ function buildViewModel()            {
     locale,
     messages,
     state: currentState(),
+    // Mount point of the running page, so every link works under a subdirectory.
+    // Origin-relative with a trailing slash: links append a route such as `zh/`.
+    root: basePathFrom(location.pathname),
     query: options.query ?? '',
     hash: options.hash ?? '',
     preview: options.preview ?? null,
@@ -442,6 +445,8 @@ export function localeForPath(pathname        )           {
                                   
                                                                                    
                                 
+                                                    
+                                         
       
    
  
@@ -455,6 +460,9 @@ if (typeof window !== 'undefined') {
     // Read-only view of the current in-memory state, for tests and integrations.
     // Nothing here is persisted or transmitted.
     getState: () => currentState(),
+    localeForPath: localeFromPath,
+    /** Mount-relative URL of an app asset, for the classic-script specimens. */
+    assetUrl: (path        ) => assetPath(path, location),
   };
   analytics.pageView();
 }

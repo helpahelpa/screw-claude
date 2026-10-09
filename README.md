@@ -51,10 +51,24 @@ committed, so the test suite fails when `dist/` or the metadata is stale.
 
 ## Deployment
 
-Publish the `ui-prototype/` directory as static files. Before going live, set
-`SITE.origin` in `ui-prototype/src/content/site.ts` to the real origin, run
-`npm run build`, and confirm `npm run check` passes. Analytics are disabled
-(`provider: 'none'`) and receive page events only; they never carry scan data.
+Published with GitHub Pages at
+**https://helpahelpa.github.io/screw-claude/** — every push to `main` runs
+[.github/workflows/deploy-pages.yml](.github/workflows/deploy-pages.yml), which
+builds the site, runs the dependency-free test suite and uploads
+`ui-prototype/` as the Pages artifact.
+
+```sh
+gh workflow run deploy-pages.yml
+gh run watch
+```
+
+Runtime URLs are derived from the page's own mount point, so the same build works
+at the domain root and under the `/screw-claude/` project subdirectory. Only
+absolute metadata — canonical links, Open Graph images, structured data,
+`sitemap.xml` and `robots.txt` — uses `SITE.origin` and `SITE.basePath` in
+`ui-prototype/src/content/site.ts`; change both together if the site moves, then
+run `npm run build`. Analytics are disabled (`provider: 'none'`) and receive page
+events only; they never carry scan data.
 
 See [prototype notes](ui-prototype/NOTES.md) for the module layout, the review
 URLs, the scoring decisions, and the temporary tailnet preview command.

@@ -12,7 +12,7 @@ import { formatOffset } from '../core/scoring.ts';
 import { COMMANDS } from '../content/commands.ts';
 import { HTML_LANG, LANGUAGE_LINKS, LOCALE_ROUTES, formatMessage, labelText } from '../content/locales.ts';
 import type { LocaleId, Messages } from '../content/locales.ts';
-import { SITE } from '../content/site.ts';
+import { SITE, assetPath } from '../content/site.ts';
 import { SOCIAL_TARGETS } from '../sharing/links.ts';
 import type { ShareSummary } from '../sharing/text.ts';
 import type { PreviewStateId } from './previews.ts';
@@ -21,6 +21,8 @@ export interface ViewModel {
   locale: LocaleId;
   messages: Messages;
   state: ScanState;
+  /** Root URL of the running page (origin + mount point), without a trailing slash. */
+  root: string;
   /** Serialized query string, preserved by language links and the brand link. */
   query: string;
   hash: string;
@@ -58,9 +60,22 @@ export const escapeHtml = (value: unknown): string =>
 
 const clean = (value: unknown): string => escapeHtml(String(value).replace(/[—–]/g, '-'));
 
+/**
+ * Sprites are referenced from rendered markup, so the URL must be relative to
+ * the origin (not the document, and not the configured deployment origin).
+ * `renderPage` sets it from the view model's root before rendering anything.
+ */
+let spriteBase = '/';
+
+export function spriteUrlFor(root: string): string {
+  const pathname = root.startsWith('http') ? new URL(root).pathname : root;
+  const base = pathname.endsWith('/') ? pathname : `${pathname}/`;
+  return `${base}taste-assets/tabler.svg`;
+}
+
 /** Icon from the vendored Tabler sprite. */
 export const glyph = (name: string, extra = ''): string =>
-  `<svg class="taste-icon${extra ? ` ${extra}` : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="/taste-assets/tabler.svg#${name}"></use></svg>`;
+  `<svg class="taste-icon${extra ? ` ${extra}` : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="${spriteBase}#${name}"></use></svg>`;
 
 function iconFor(id: SignalId): string {
   return SIGNAL_ICONS[id];
@@ -120,9 +135,9 @@ function severityLabel(signal: SignalResult, messages: Messages): string {
 function header(vm: ViewModel): string {
   const languages = LANGUAGE_LINKS.map(link => {
     const current = link.id === vm.locale;
-    return `<a href="${LOCALE_ROUTES[link.id]}${vm.query}${vm.hash}" lang="${HTML_LANG[link.id]}" hreflang="${HTML_LANG[link.id]}" aria-label="${escapeHtml(`${link.label}: ${link.name}`)}"${current ? ' aria-current="page"' : ''}>${escapeHtml(link.label)}</a>`;
+    return `<a href="${vm.root}${LOCALE_ROUTES[link.id].replace(/^\//, '')}${vm.query}${vm.hash}" lang="${HTML_LANG[link.id]}" hreflang="${HTML_LANG[link.id]}" aria-label="${escapeHtml(`${link.label}: ${link.name}`)}"${current ? ' aria-current="page"' : ''}>${escapeHtml(link.label)}</a>`;
   }).join('');
-  return `<a class="focus-skip" href="#check">${escapeHtml(vm.messages.skipToContent)}</a><header class="site-header focus-header"><a class="brand" href="${LOCALE_ROUTES[vm.locale]}${vm.query}" aria-label="screw/claude"><span class="brand-mark">${glyph('mark', 'brand-glyph')}</span><span>screw<span class="brand-slash">/</span>claude</span></a><nav class="languages" aria-label="${escapeHtml(vm.messages.languageLabel)}">${languages}</nav></header>`;
+  return `<a class="focus-skip" href="#check">${escapeHtml(vm.messages.skipToContent)}</a><header class="site-header focus-header"><a class="brand" href="${vm.root}${LOCALE_ROUTES[vm.locale].replace(/^\//, '')}${vm.query}" aria-label="screw/claude"><span class="brand-mark">${glyph('mark', 'brand-glyph')}</span><span>screw<span class="brand-slash">/</span>claude</span></a><nav class="languages" aria-label="${escapeHtml(vm.messages.languageLabel)}">${languages}</nav></header>`;
 }
 
 /** Rendered observation for one signal, always escaped. */
@@ -349,6 +364,7 @@ function reviewControls(vm: ViewModel): string {
 
 export function renderPage(vm: ViewModel): string {
   const { messages } = vm;
+  spriteBase = spriteUrlFor(vm.root);
   const notice = vm.preview ? `<p class="focus-sample-notice">${escapeHtml(messages.sampleNotice)}</p>` : '';
   return `${header(vm)}<main class="main-content focus-main" id="main"><section class="focus-introduction" aria-labelledby="focus-title"><h1 id="focus-title">${clean(messages.headline)}<br><span>${clean(messages.headlineAccent)}</span></h1><p class="focus-intro">${clean(messages.intro)}</p>${notice}${checkPanel(vm)}</section><section class="focus-information" aria-label="${escapeHtml(messages.scopeHeading)}">${findings(vm)}${observations(vm.state.result, vm)}${education(vm)}${terminal(vm)}${faq(vm)}</section></main><footer class="focus-footer"><p>${clean(messages.footer)}</p><p class="focus-footer-note">${escapeHtml(messages.footerNote)}</p></footer>${reviewControls(vm)}${shareDialog(vm)}`;
 }
