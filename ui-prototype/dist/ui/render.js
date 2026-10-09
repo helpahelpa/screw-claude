@@ -7,7 +7,7 @@
  */
 
                                                                                             
-import { RULES } from '../core/rules.js';
+import { FONT_SUMMARY_LIMIT, RULES } from '../core/rules.js';
 import { formatOffset } from '../core/scoring.js';
 import { COMMANDS } from '../content/commands.js';
 import { HTML_LANG, LANGUAGE_LINKS, LOCALE_ROUTES, formatMessage, labelText } from '../content/locales.js';
@@ -59,6 +59,17 @@ export const escapeHtml = (value         )         =>
   );
 
 const clean = (value         )         => escapeHtml(String(value).replace(/[—–]/g, '-'));
+
+/** Long observation lists: the tail hides behind a quiet "and N others" spoiler. */
+function spoiler(items          , messages          )         {
+  const hidden = items.filter(Boolean);
+  if (hidden.length === 0) return '';
+  const label = formatMessage(messages.andOthers, { count: hidden.length });
+  return `<details class="focus-spoiler"><summary>${escapeHtml(label)}</summary><p class="focus-spoiler-list">${clean(hidden.join(', '))}</p></details>`;
+}
+
+/** Languages are useful as observed, but a flood of tags still needs a limit. */
+const LANGUAGE_INLINE_LIMIT = 8;
 
 /**
  * Sprites are referenced from rendered markup, so the URL must be relative to
@@ -152,18 +163,30 @@ function describe(signal                     , index        , vm           )    
     case 'timezone':
     case 'intlLocale':
       return `<code>${clean(observed ?? messages.statusUnavailable)}</code>`;
-    case 'language':
-      return Array.isArray(observed) && observed.length > 0
-        ? `<code>${clean(observed.join(', '))}</code>`
-        : `<span class="focus-placeholder">${escapeHtml(messages.statusUnavailable)}</span>`;
+    case 'language': {
+      if (!Array.isArray(observed) || observed.length === 0) {
+        return `<span class="focus-placeholder">${escapeHtml(messages.statusUnavailable)}</span>`;
+      }
+      const tags = observed.map(String);
+      const inline = tags.slice(0, LANGUAGE_INLINE_LIMIT);
+      return `<code>${clean(inline.join(', '))}</code>${spoiler(tags.slice(LANGUAGE_INLINE_LIMIT), messages)}`;
+    }
     case 'fonts':
       return typeof observed === 'string' && observed
         ? `<code>${clean(observed)}</code>`
         : `<span class="focus-placeholder">${escapeHtml(messages.noMatchingFonts)}</span>`;
-    case 'speechVoices':
-      return Array.isArray(observed) && observed.length > 0
-        ? `<code>${clean(observed.join(', '))}</code>`
-        : `<span class="focus-placeholder">${escapeHtml(messages.noneMatched)}</span>`;
+    case 'speechVoices': {
+      // Only the tags that earned points stay visible; every other installed
+      // voice language (a browser can report dozens) moves behind the spoiler.
+      const tags = Array.isArray(observed) ? observed.map(String) : [];
+      const matched = signal.details?.voiceMatches ?? [];
+      const inline =
+        matched.length > 0
+          ? `<code>${clean(matched.join(', '))}</code>`
+          : `<span class="focus-placeholder">${escapeHtml(messages.noneMatched)}</span>`;
+      const rest = tags.filter(tag => !matched.includes(tag));
+      return `${inline}${spoiler(rest, messages)}`;
+    }
     case 'timezoneOffset':
       return `<code>${clean(formatOffset(Number(observed)))}</code>`;
     case 'browserVendor':
@@ -210,10 +233,15 @@ function fontDetail(signal                     , messages          )         {
   if (!matches) return '';
   const full = matches.filter(entry => entry.matched.length > 0);
   if (full.length === 0) return '';
-  const text = full
-    .map(entry => `${profileLabel(entry.profile, messages)}: ${entry.matched.join(', ')}`)
+  // The row already shows the winning profile's summary, so only the other
+  // profiles add information; every name past the summary hides in the spoiler.
+  const other = full.filter(entry => entry.profile !== signal?.region);
+  const line = other
+    .map(entry => `${profileLabel(entry.profile, messages)}: ${entry.summary || entry.matched.join(', ')}`)
     .join(' · ');
-  return `<p class="focus-signal-detail">${clean(text)}</p>`;
+  const extra = full.flatMap(entry => entry.matched.slice(FONT_SUMMARY_LIMIT));
+  const detail = line ? `<p class="focus-signal-detail">${clean(line)}</p>` : '';
+  return `${detail}${spoiler(extra, messages)}`;
 }
 
 /* ----------------------------------------------------------- check panel -- */

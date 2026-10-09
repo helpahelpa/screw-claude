@@ -55,6 +55,8 @@ export interface Messages {
   observationsHeading: string;
   matchedTag: string;
   matchedSummary: string;
+  /** Spoiler label for a long observation list: `and {count} others`. */
+  andOthers: string;
   regionsHeading: string;
   regionsNone: string;
   observedLabel: string;
@@ -336,6 +338,7 @@ const EN: Messages = {
   observationsHeading: 'All nine observations',
   matchedTag: 'Matched',
   matchedSummary: '{matched} of {total} checks matched',
+  andOthers: 'and {count} others',
   regionsHeading: 'Region profiles consistent with the result',
   regionsNone: 'No region profile matched a weighted signal.',
   observedLabel: 'Observation',
@@ -527,6 +530,7 @@ const ZH: Messages = {
   observationsHeading: '九项观察结果',
   matchedTag: '已匹配',
   matchedSummary: '9 项检查中匹配 {matched} 项',
+  andOthers: '另有 {count} 项',
   regionsHeading: '与结果相符的区域画像',
   regionsNone: '没有区域画像与加权信号匹配。',
   observedLabel: '观察结果',
@@ -720,6 +724,7 @@ const RU: Messages = {
   observationsHeading: 'Все девять наблюдений',
   matchedTag: 'Совпало',
   matchedSummary: 'Совпало проверок: {matched} из {total}',
+  andOthers: 'и ещё {count}',
   regionsHeading: 'Региональные профили, согласующиеся с результатом',
   regionsNone: 'Ни один региональный профиль не совпал со взвешенным признаком.',
   observedLabel: 'Наблюдение',

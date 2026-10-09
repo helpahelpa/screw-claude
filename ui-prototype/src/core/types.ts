@@ -34,8 +34,12 @@ export interface SignalDetails {
   languages?: string[];
   /** Per-profile font matches; the full list survives for local display. */
   fontMatches?: FontMatch[];
-  /** Local voice languages observed, lowercased. */
+  /** Local voice languages observed, lowercased and deduplicated. */
   voiceLanguages?: string[];
+  /** Observed tags that matched the scoring voice rule, i.e. the ones that scored. */
+  voiceMatches?: string[];
+  /** Local voices reported by the browser before deduplication. */
+  voiceCount?: number;
   /** Best-effort browser label, also used when nothing matched. */
   browserLabel?: string;
   /** Best-effort device or platform label. */

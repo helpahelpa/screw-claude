@@ -91,10 +91,18 @@ export const DETECTORS             = [
       const local = voices.filter(voice => voice.local).map(voice => voice.lang).filter(Boolean);
       if (local.length === 0) {
         // Voices exist, but only network voices: an explainable zero, not absence.
-        return available([], { strength: 0, region: null, details: { voiceLanguages: [] } });
+        return available([], {
+          strength: 0,
+          region: null,
+          details: { voiceLanguages: [], voiceMatches: [], voiceCount: 0 },
+        });
       }
       const match = evaluateVoices(local, rules);
-      return available(local.map(language => language.toLowerCase()), match);
+      const languages = match.details?.voiceLanguages ?? [];
+      return available(languages, {
+        ...match,
+        details: { ...match.details, voiceCount: local.length },
+      });
     },
   },
   {

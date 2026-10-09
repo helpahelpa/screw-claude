@@ -70,6 +70,33 @@ describe('voice detector', () => {
     await assert.rejects(() => detector.run(fakeSource({ voices: 'throw' }), RULES));
   });
 
+  it('deduplicates the observed tags and keeps the raw voice count', async () => {
+    const voices = [
+      ...Array.from({ length: 40 }, () => ({ lang: 'en-US', local: true })),
+      { lang: 'zh-CN', local: true },
+      { lang: 'zh-CN', local: true },
+      { lang: 'ja-JP', local: true },
+    ];
+    const outcome = await detector.run(fakeSource({ voices }), RULES);
+    // A browser reports one entry per installed voice, so the same language
+    // would otherwise flood the row.
+    assert.deepEqual(outcome.observed, ['en-us', 'zh-cn', 'ja-jp']);
+    assert.deepEqual(outcome.details?.voiceLanguages, ['en-us', 'zh-cn', 'ja-jp']);
+    assert.deepEqual(outcome.details?.voiceMatches, ['zh-cn']);
+    assert.equal(outcome.details?.voiceCount, 43);
+  });
+
+  it('marks only the winning rule as matched when two profiles qualify', async () => {
+    const outcome = await detector.run(
+      fakeSource({ voices: [{ lang: 'zh-CN', local: true }, { lang: 'ru-RU', local: true }] }),
+      RULES,
+    );
+    // Both rules reach 1.0, the tie keeps profile order, so only zh scored.
+    assert.equal(outcome.region, 'cn');
+    assert.deepEqual(outcome.details?.voiceMatches, ['zh-cn']);
+    assert.deepEqual(outcome.details?.voiceLanguages, ['zh-cn', 'ru-ru']);
+  });
+
   it('reports a local voice in an unrelated language as an explainable zero', async () => {
     const outcome = await detector.run(fakeSource({ voices: [{ lang: 'fr-FR', local: true }] }), RULES);
     const signal = toSignalResult({ id: 'speechVoices', ...outcome }, RULES);
@@ -77,5 +104,7 @@ describe('voice detector', () => {
     assert.equal(signal.contribution, 0);
     assert.deepEqual(signal.observed, ['fr-fr']);
     assert.equal(signal.details?.voiceLanguages?.join(','), 'fr-fr');
+    assert.deepEqual(signal.details?.voiceMatches, []);
+    assert.equal(signal.details?.voiceCount, 1);
   });
 });

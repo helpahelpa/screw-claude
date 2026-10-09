@@ -145,6 +145,53 @@
   color: var(--muted);
 }
 
+/* Long observation lists collapse behind a quiet spoiler */
+.focus-spoiler {
+  margin-top: 6px;
+  padding-left: 29px;
+}
+
+.focus-spoiler > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.focus-spoiler > summary::-webkit-details-marker {
+  display: none;
+}
+
+.focus-spoiler > summary::before {
+  content: '+';
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.focus-spoiler[open] > summary::before {
+  content: '−';
+}
+
+.focus-spoiler > summary:hover {
+  color: var(--ink);
+}
+
+.focus-spoiler-list {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font: 12px/1.8 var(--mono);
+  overflow-wrap: anywhere;
+}
+
 /* Matched rows inside the single observation list */
 .focus-signal.is-matched dt > span {
   color: var(--accent);
@@ -231,7 +278,8 @@
 
 @media (max-width: 620px) {
   .focus-signal-meta,
-  .focus-signal-detail {
+  .focus-signal-detail,
+  .focus-spoiler {
     padding-left: 0;
   }
 }

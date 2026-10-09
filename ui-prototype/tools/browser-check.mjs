@@ -347,6 +347,35 @@ async function checkRoute(cdp, locale, pathname) {
     `${name}: the command copy path reports an outcome (${copyFeedback.feedback || 'none'})`,
   );
 
+  // A browser can report one voice entry per installed voice, so the row must
+  // keep only the tags that scored and collapse the rest.
+  const collapse = JSON.parse(
+    await cdp.evaluate(`JSON.stringify((() => {
+      const row = document.querySelector('[data-signal="speechVoices"]');
+      const spoiler = row?.querySelector('.focus-spoiler');
+      const list = spoiler?.querySelector('.focus-spoiler-list')?.textContent ?? '';
+      const inline = row?.querySelector('.focus-signal-value > code')?.textContent ?? '';
+      return {
+        present: !!row,
+        hasSpoiler: !!spoiler,
+        open: spoiler?.hasAttribute('open') ?? false,
+        label: spoiler?.querySelector('summary')?.textContent ?? '',
+        hidden: list ? list.split(', ').length : 0,
+        inlineTags: inline ? inline.split(', ').length : 0,
+      };
+    })())`),
+  );
+  check(collapse.present, `${name}: the voice observation is rendered`);
+  check(!collapse.hasSpoiler || !collapse.open, `${name}: the voice spoiler starts closed`);
+  check(
+    !collapse.hasSpoiler || collapse.inlineTags <= 8,
+    `${name}: the voice row stays short (${collapse.inlineTags} inline tags)`,
+  );
+  check(
+    !collapse.hasSpoiler || collapse.label === `and ${collapse.hidden} others`,
+    `${name}: the spoiler label counts the hidden tags (${collapse.label})`,
+  );
+
   const errors = cdp.takeErrors();
   check(errors.length === 0, `${name}: no errors during the scan${errors.length ? ` -> ${errors.join(' | ')}` : ''}`);
 

@@ -212,8 +212,12 @@ export function evaluateFonts(outcomes: FontProbeOutcome[], rules: RulesConfig):
 /* ------------------------------------------------------- speech voices -- */
 
 export function evaluateVoices(voiceLanguages: string[], rules: RulesConfig): Match {
-  const langs = voiceLanguages.map(normalizeTag).filter(Boolean);
-  if (langs.length === 0) return { strength: 0, region: null, details: { voiceLanguages: [] } };
+  // Browsers report duplicate voices for the same language, so the observed
+  // tag list is deduplicated while the caller keeps the raw count.
+  const langs = [...new Set(voiceLanguages.map(normalizeTag).filter(Boolean))];
+  if (langs.length === 0) {
+    return { strength: 0, region: null, details: { voiceLanguages: [], voiceMatches: [] } };
+  }
   const candidates: Candidate[] = rules.profiles.map(profile => {
     const rule = profile.voices.find(candidate => langs.some(lang => lang.split('-')[0] === candidate.lang));
     return rule
@@ -221,7 +225,9 @@ export function evaluateVoices(voiceLanguages: string[], rules: RulesConfig): Ma
       : { matched: false, strength: 0, region: null };
   });
   const best = strongest(candidates);
-  return { ...best, details: { voiceLanguages: langs } };
+  // Only the winning rule scored, so only its tags count as matched.
+  const voiceMatches = best.label ? langs.filter(lang => lang.split('-')[0] === best.label) : [];
+  return { ...best, details: { voiceLanguages: langs, voiceMatches } };
 }
 
 /* --------------------------------------------------------------- locale -- */

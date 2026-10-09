@@ -30,8 +30,28 @@ function idleState() {
   } as unknown as ViewModel['state'];
 }
 
-async function viewModel(root: string, withResult = true): Promise<ViewModel> {
-  const result = withResult ? await runScan({ source: fakeSource(CHINA_ENVIRONMENT) }) : null;
+const BUSY_ENVIRONMENT = {
+  ...CHINA_ENVIRONMENT,
+  languages: ['zh-CN', 'zh', 'en', 'de', 'ja', 'ko', 'fr', 'es', 'it', 'pt', 'ru', 'nl'],
+  voices: [
+    ...Array.from({ length: 30 }, () => ({ lang: 'en-US', local: true })),
+    { lang: 'zh-CN', local: true },
+    { lang: 'ja-JP', local: true },
+    { lang: 'de-DE', local: true },
+    { lang: 'ru-RU', local: true },
+  ],
+  matchedFonts: [
+    'Microsoft YaHei',
+    'SimSun',
+    'PingFang SC',
+    'Noto Sans CJK SC',
+    'Source Han Sans SC',
+    'Alibaba PuHuiTi',
+  ],
+};
+
+async function viewModel(root: string, withResult = true, environment = CHINA_ENVIRONMENT): Promise<ViewModel> {
+  const result = withResult ? await runScan({ source: fakeSource(environment) }) : null;
   const summary = result
     ? buildSummary({ result, locale: 'en', url: shareUrl('en', { origin: 'https://example.test', protocol: 'https:', pathname: `${root}zh/` }) })
     : null;
@@ -147,6 +167,64 @@ describe('mount-relative rendering', () => {
       contributions.reduce((total, value) => total + value, 0),
       vm.state.result.total,
     );
+  });
+
+  it('collapses a long voice list behind a closed spoiler', async () => {
+    const vm = await viewModel('/', true, BUSY_ENVIRONMENT);
+    const html = renderPage(vm);
+    const row = /data-signal="speechVoices"[\s\S]*?<\/div>/.exec(html)?.[0] ?? '';
+    const value = /focus-signal-value[^>]*>([\s\S]*?)<\/dd>/.exec(row)?.[1] ?? '';
+    // Only the tag that scored stays visible; the spoiler holds the rest.
+    const inline = value.split('<details')[0];
+    assert.match(inline, /<code>zh-cn<\/code>/);
+    assert.equal(inline.includes('en-us'), false);
+    const spoilerMatch = /<details class="focus-spoiler"><summary>([^<]+)<\/summary><p class="focus-spoiler-list">([^<]+)<\/p><\/details>/.exec(value);
+    assert.ok(spoilerMatch, 'the remaining voice languages should be collapsed');
+    const [, label, hidden] = spoilerMatch;
+    const hiddenTags = hidden.split(', ');
+    assert.equal(label, `and ${hiddenTags.length} others`);
+    assert.equal(hiddenTags.length, 4);
+    assert.deepEqual(hiddenTags, ['en-us', 'ja-jp', 'de-de', 'ru-ru']);
+    // Closed by default: the detail is available, not in the way.
+    assert.equal(/<details class="focus-spoiler" open/.test(html), false);
+  });
+
+  it('collapses the font names that the summary already truncated', async () => {
+    const vm = await viewModel('/', true, BUSY_ENVIRONMENT);
+    const html = renderPage(vm);
+    const row = /data-signal="fonts"[\s\S]*?<\/div>/.exec(html)?.[0] ?? '';
+    // One profile matched, so there is no extra profile line to show.
+    assert.equal(row.includes('focus-signal-detail'), false);
+    const spoilerMatch = /<summary>([^<]+)<\/summary><p class="focus-spoiler-list">([^<]+)<\/p>/.exec(row);
+    assert.ok(spoilerMatch, 'font names beyond the summary should be collapsed');
+    assert.equal(spoilerMatch[1], 'and 2 others');
+    assert.deepEqual(spoilerMatch[2].split(', '), ['Source Han Sans SC', 'Noto Sans CJK SC']);
+  });
+
+  it('collapses a long list even when nothing scored', async () => {
+    const vm = await viewModel('/', true, {
+      ...BUSY_ENVIRONMENT,
+      voices: Array.from({ length: 20 }, (_, index) => ({ lang: `xx-${index}`, local: true })),
+    });
+    const html = renderPage(vm);
+    const row = /data-signal="speechVoices"[\s\S]*?<\/div>/.exec(html)?.[0] ?? '';
+    assert.match(row, /Nothing matched/);
+    assert.match(row, /and 20 others/);
+  });
+
+  it('keeps short lists fully visible', async () => {
+    const vm = await viewModel('/');
+    const html = renderPage(vm);
+    assert.equal(html.includes('focus-spoiler'), false);
+  });
+
+  it('collapses a long language list after eight tags', async () => {
+    const vm = await viewModel('/', true, BUSY_ENVIRONMENT);
+    const html = renderPage(vm);
+    const row = /data-signal="language"[\s\S]*?<\/div>/.exec(html)?.[0] ?? '';
+    const inline = /<code>([^<]+)<\/code>/.exec(row)?.[1] ?? '';
+    assert.equal(inline.split(', ').length, 8);
+    assert.match(row, /and 4 others/);
   });
 
   it('includes the share destinations from the view model', async () => {

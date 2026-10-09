@@ -114,7 +114,7 @@ npm run smoke       # headless Chrome check over the DevTools protocol
 npm run check       # typecheck + build + test + smoke
 ```
 
-`npm test` and `npm run smoke` need the static server on `http://127.0.0.1:4173` (the smoke check drives a real browser). `npm run build` output is deterministic and committed, and the build suite fails if `dist/` or the generated metadata is stale. `npm test` runs 316 cases.
+`npm test` and `npm run smoke` need the static server on `http://127.0.0.1:4173` (the smoke check drives a real browser). `npm run build` output is deterministic and committed, and the build suite fails if `dist/` or the generated metadata is stale. `npm test` runs 324 cases.
 
 ### Review URLs
 
@@ -141,13 +141,14 @@ Review previews are not mock strings: each one runs the real controller over an 
 - **Bare `zh` counts as Simplified** in the primary and later positions, matching the reference; `zh-TW`/`zh-HK`/`zh-MO` and `hant` are Traditional.
 - **Fonts saturate**: one Simplified match scores 0.83 and each further match adds 0.08 up to 1; a Traditional-only set scores 0.5. Russian candidate fonts use thresholds 1 → 0.5, 2 → 0.7, 3 → 1.
 - **Presentation timing lives in the controller**, never in scoring: `PACING` only delays progress events.
+- **Long observations collapse.** A browser reports one entry per installed speech voice, so the voice row shows only the tags that scored and hides the rest behind an "and N others" spoiler; the same treatment covers font names past the summary and language lists beyond eight tags.
 - **`SITE.origin` is `https://screw-claude.example`**, a placeholder to configure before deployment. Runtime share URLs prefer the live HTTP(S) origin.
 - **The bundled CJK subset must cover the shipped copy.** `tools/subset-cjk.py` collects the inventory from the sources and regenerates `fonts/ui-cjk.ttf` and `taste-assets/cjk.woff2` from Noto Sans SC (OFL). The smoke check verifies every rendered CJK character is inside that subset, on the page and on the canvas card, because a missing glyph is an unreadable box on machines without system CJK fonts.
 
 ### Verification
 
-- 316 unit tests: rule tables and fixtures (Chinese, Russian, aliases, lowercase zones, script tags, overlapping browser/device markers, unknown platforms), font and voice permutations, weight rounding and the 30/31 and 60/61 boundaries, controller lifecycle (duplicate starts, detector exceptions, fresh reruns, abort, disposal, lock release), content parity across the three dictionaries, sharing (summary, links, clipboard denial, PNG generation, delivery order, canceled share), privacy (no network during scans with analytics on or off), the deterministic build against the committed artifacts, and a source-hygiene scan for network or storage calls.
-- A dependency-free CDP smoke check (261 checks) drives a real headless Chrome through all three routes: it runs an actual scan, verifies that the nine observations and the score agree with the sum of contributions, opens the share dialog, checks the four social links and three copy platforms, copies a terminal command, renders review previews, inspects the generated 1200×630 card, confirms zero third-party requests, and verifies the CJK subset covers every rendered character.
+- 324 unit tests: rule tables and fixtures (Chinese, Russian, aliases, lowercase zones, script tags, overlapping browser/device markers, unknown platforms), font and voice permutations, weight rounding and the 30/31 and 60/61 boundaries, controller lifecycle (duplicate starts, detector exceptions, fresh reruns, abort, disposal, lock release), content parity across the three dictionaries, sharing (summary, links, clipboard denial, PNG generation, delivery order, canceled share), privacy (no network during scans with analytics on or off), the deterministic build against the committed artifacts, and a source-hygiene scan for network or storage calls.
+- A dependency-free CDP smoke check (282 checks) drives a real headless Chrome through all three routes: it runs an actual scan, verifies that the nine observations and the score agree with the sum of contributions, opens the share dialog, checks the four social links and three copy platforms, copies a terminal command, renders review previews, inspects the generated 1200×630 card, confirms zero third-party requests, and verifies the CJK subset covers every rendered character.
 
 ### Not verified here
 
