@@ -58,7 +58,7 @@ systemd-run --user --unit=screw-claude-ui-preview --collect \
 tailscale serve --bg --https=9445 http://127.0.0.1:4173
 ```
 
-Preview: `https://desktop-7r2lmnh.tail786efd.ts.net:9445/` (tailnet only).
+Preview: `https://<tailnet-host>:9445/` (tailnet only; the host name is kept out of this repository).
 
 Stop the temporary preview and remove only its forwarding endpoint:
 
