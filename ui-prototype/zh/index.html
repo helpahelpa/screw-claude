@@ -3,18 +3,140 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="浏览器环境检测工具的原创界面原型。">
+    <!-- meta:start -->
+    <title>screw/claude — 你的浏览器透露了什么？</title>
+    <meta name="description" content="九项本机检查读取浏览器公开的设置，给出 0 到 100 的分数，并说明每一分的来源。全部过程都在你的设备上完成。">
+    <link rel="canonical" href="https://screw-claude.example/zh/">
+    <link rel="alternate" hreflang="en" href="https://screw-claude.example/">
+    <link rel="alternate" hreflang="zh-CN" href="https://screw-claude.example/zh/">
+    <link rel="alternate" hreflang="ru" href="https://screw-claude.example/ru/">
+    <link rel="alternate" hreflang="x-default" href="https://screw-claude.example/">
+    <meta name="robots" content="index, follow">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="screw/claude">
+    <meta property="og:title" content="screw/claude — 你的浏览器透露了什么？">
+    <meta property="og:description" content="九项本机检查读取浏览器公开的设置，给出 0 到 100 的分数，并说明每一分的来源。全部过程都在你的设备上完成。">
+    <meta property="og:url" content="https://screw-claude.example/zh/">
+    <meta property="og:locale" content="zh_CN">
+    <meta property="og:image" content="https://screw-claude.example/assets/social-preview.svg">
+    <meta property="og:image:type" content="image/svg+xml">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="screw/claude — 你的浏览器透露了什么？">
+    <meta name="twitter:description" content="九项本机检查读取浏览器公开的设置，给出 0 到 100 的分数，并说明每一分的来源。全部过程都在你的设备上完成。">
+    <meta name="twitter:image" content="https://screw-claude.example/assets/social-preview.svg">
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebApplication",
+          "name": "screw/claude — 你的浏览器透露了什么？",
+          "url": "https://screw-claude.example/zh/",
+          "inLanguage": "zh",
+          "applicationCategory": "UtilitiesApplication",
+          "operatingSystem": "Any browser with Canvas and Intl support",
+          "description": "九项本机检查读取浏览器公开的设置，给出 0 到 100 的分数，并说明每一分的来源。全部过程都在你的设备上完成。",
+          "isAccessibleForFree": true,
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+          },
+          "featureList": [
+            "时区",
+            "语言偏好",
+            "字体渲染",
+            "语音合成",
+            "默认区域",
+            "UTC 偏移",
+            "浏览器类型",
+            "设备类型",
+            "表情风格"
+          ]
+        },
+        {
+          "@type": "FAQPage",
+          "inLanguage": "zh",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "为什么检查时区？",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "时区是浏览器公开的设置之一，也常出现在关于环境检查的讨论中。本页面让你方便地查看这一项，但无法确定服务是否使用它、如何使用它。"
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "这和服务内部的检查一样吗？",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "不一样。这是基于浏览器可见设置的独立启发式规则，无法访问服务内部系统，分数也不能复现内部决策。"
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "高分也可能正常使用吗？",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "可以。分数描述的是浏览器信号的集合，不代表账号状态。高分与正常使用并不矛盾。"
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "哪些设置会影响结果？",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "系统时区、浏览器语言顺序、已安装且可渲染的字体、本机语音合成声音、默认区域、用户代理、平台和操作系统都会影响观察结果。隐私保护、沙箱浏览器或修改过的用户代理可能让部分信息不完整。"
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "为什么终端检查是单独提供的？",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "网页无法读取终端的代理变量、时间或 DNS 响应。命令供你自行查看；本页面不会执行命令，也不会接收输出。"
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "账号受限了怎么办？",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "只有服务方能够解释账号受到的限制。请查看官方的安全措施、警告与申诉指引，不要仅凭此分数下结论。"
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "数据会离开设备吗？",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "观察结果和分数只保存在本机内存中。主动分享时，摘要会发送到你选择的平台。加载页面仍会向托管服务器发出正常请求；分析统计默认关闭，且不会接收检测数据。"
+              }
+            }
+          ]
+        },
+        {
+          "@type": "WebSite",
+          "name": "screw/claude",
+          "url": "https://screw-claude.example/",
+          "inLanguage": "zh"
+        }
+      ]
+    }
+    </script>
+    <!-- meta:end -->
     <meta name="color-scheme" content="light dark">
-    <title>screw/claude — 看清浏览器环境</title>
-    <link rel="alternate" hreflang="en" href="/">
-    <link rel="alternate" hreflang="zh-CN" href="/zh/">
-    <link rel="alternate" hreflang="ru" href="/ru/">
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="manifest" href="/site.webmanifest">
     <link rel="stylesheet" href="/styles.css">
     <link rel="stylesheet" href="/taste-variants.css">
     <link rel="stylesheet" href="/focus-variant.css">
+    <link rel="stylesheet" href="/focus-live.css">
+    <script type="module" src="/dist/ui/main.js"></script>
     <script src="/taste-variants.js" defer></script>
-    <script src="/focus-variant.js" defer></script>
     <script src="/app.js" defer></script>
   </head>
   <body>

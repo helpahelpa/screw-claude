@@ -1,0 +1,31 @@
+{
+  "name": "screw/claude — browser environment diagnostic",
+  "short_name": "screw/claude",
+  "description": "Nine local checks read the settings your browser exposes, score them from 0 to 100, and explain every point. Everything runs on your device.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "lang": "en",
+  "dir": "ltr",
+  "background_color": "#ffffff",
+  "theme_color": "#3457c9",
+  "categories": [
+    "utilities",
+    "privacy"
+  ],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "id": "https://screw-claude.example/"
+}

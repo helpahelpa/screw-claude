@@ -258,10 +258,6 @@ function variantA() {
 function variantB() {
   return `${header()}<div class="console-shell"><aside class="console-rail"><p class="eyebrow">${t.railTitle}</p><div class="rail-title">${t.railCaption}</div><nav aria-label="${t.sectionNavigation}"><a href="#check" class="active"><span>01</span>${t.check}${icon('right')}</a><a href="#how"><span>02</span>${t.how}</a><a href="#faq"><span>03</span>${t.faq}</a></nav><div class="rail-bottom"><span class="tiny-dot"></span>${t.railStatus}<p>${t.local}<br>${t.private}</p></div></aside><main class="main-content"><div class="console-intro"><p class="eyebrow">${t.eyebrow}</p><h1>${t.headline} <em>${t.headlineEm}</em></h1><p>${t.intro}</p></div>${workspace()}${about()}${terminal()}${faq()}</main></div>${footer()}`;
 }
-function variantC() {
-  return FocusVariant.render();
-}
-
 function reviewBar() {
   if (!showReview) return '';
   if (TasteVariants.isActive(variant)) return TasteVariants.reviewBar();
@@ -275,18 +271,27 @@ function shareDialog() {
 
 function render() {
   const taste = TasteVariants.isActive(variant);
-  const focus = variant === 'C';
-  document.documentElement.lang = locale === 'zh' ? 'zh-CN' : locale;
-  document.title = taste || focus ? t.title.replace(/[—–]/g, '-') : t.title;
   document.body.dataset.variant = variant;
   document.body.dataset.state = state;
   if (taste) TasteVariants.applyTheme();
   else delete document.body.dataset.tasteTheme;
-  if (focus) FocusVariant.applyTheme();
-  else delete document.body.dataset.focusTheme;
+  delete document.body.dataset.focusTheme;
   document.body.classList.toggle('has-review', showReview);
-  document.body.classList.toggle('has-focus-state-controls', focus && FocusVariant.hasStateControls());
-  document.getElementById('app').innerHTML = ({A: variantA, B: variantB, C: variantC, D: TasteVariants.overview, E: TasteVariants.report}[variant])() + (focus ? FocusVariant.shareDialog() : taste ? TasteVariants.shareDialog() : shareDialog()) + reviewBar();
+  document.body.classList.remove('has-focus-state-controls');
+  // Variant C is the live application: the functional core renders it.
+  if (variant === 'C' && window.ScrewClaude) {
+    window.ScrewClaude.mount({locale, query: location.search, hash: location.hash, preview: showReview ? previewFromUrl() : null});
+    return;
+  }
+  document.documentElement.lang = locale === 'zh' ? 'zh-CN' : locale;
+  document.title = t.title;
+  document.getElementById('app').innerHTML = ({A: variantA, B: variantB, D: TasteVariants.overview, E: TasteVariants.report}[variant])() + (taste ? TasteVariants.shareDialog() : shareDialog()) + reviewBar();
+}
+
+/** Review-mode sample state taken from the URL, so the live app restores it. */
+function previewFromUrl() {
+  const value = new URLSearchParams(location.search).get('state');
+  return ['idle', 'running', 'low', 'medium', 'high', 'partial', 'error'].includes(value) ? value : 'idle';
 }
 
 function updateUrl() {
@@ -324,6 +329,7 @@ function cycleVariant(direction) {
 }
 
 document.addEventListener('click', event => {
+  if (variant === 'C') return;
   const action = event.target.closest('[data-action]')?.dataset.action;
   if (action === 'start') setState('running');
   if (action === 'reset') setState('idle');
@@ -337,10 +343,11 @@ document.addEventListener('click', event => {
   }
 });
 document.addEventListener('change', event => {
+  if (variant === 'C') return;
   if (event.target.id === 'preview-state') setState(event.target.value);
 });
 document.addEventListener('keydown', event => {
-  if (!showReview || document.querySelector('dialog[open]') || event.altKey || event.ctrlKey || event.metaKey) return;
+  if (variant === 'C' || !showReview || document.querySelector('dialog[open]') || event.altKey || event.ctrlKey || event.metaKey) return;
   if (event.target.closest('input, textarea, select, [contenteditable="true"]')) return;
   if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
     event.preventDefault();

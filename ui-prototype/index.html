@@ -3,18 +3,140 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="An original UI prototype for a private browser environment diagnostic.">
+    <!-- meta:start -->
+    <title>screw/claude — What does your browser give away?</title>
+    <meta name="description" content="Nine local checks read the settings your browser exposes, score them from 0 to 100, and explain every point. Everything runs on your device.">
+    <link rel="canonical" href="https://screw-claude.example/">
+    <link rel="alternate" hreflang="en" href="https://screw-claude.example/">
+    <link rel="alternate" hreflang="zh-CN" href="https://screw-claude.example/zh/">
+    <link rel="alternate" hreflang="ru" href="https://screw-claude.example/ru/">
+    <link rel="alternate" hreflang="x-default" href="https://screw-claude.example/">
+    <meta name="robots" content="index, follow">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="screw/claude">
+    <meta property="og:title" content="screw/claude — What does your browser give away?">
+    <meta property="og:description" content="Nine local checks read the settings your browser exposes, score them from 0 to 100, and explain every point. Everything runs on your device.">
+    <meta property="og:url" content="https://screw-claude.example/">
+    <meta property="og:locale" content="en_US">
+    <meta property="og:image" content="https://screw-claude.example/assets/social-preview.svg">
+    <meta property="og:image:type" content="image/svg+xml">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="screw/claude — What does your browser give away?">
+    <meta name="twitter:description" content="Nine local checks read the settings your browser exposes, score them from 0 to 100, and explain every point. Everything runs on your device.">
+    <meta name="twitter:image" content="https://screw-claude.example/assets/social-preview.svg">
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebApplication",
+          "name": "screw/claude — What does your browser give away?",
+          "url": "https://screw-claude.example/",
+          "inLanguage": "en",
+          "applicationCategory": "UtilitiesApplication",
+          "operatingSystem": "Any browser with Canvas and Intl support",
+          "description": "Nine local checks read the settings your browser exposes, score them from 0 to 100, and explain every point. Everything runs on your device.",
+          "isAccessibleForFree": true,
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+          },
+          "featureList": [
+            "Timezone",
+            "Languages",
+            "Font rendering",
+            "Speech voices",
+            "Default locale",
+            "UTC offset",
+            "Browser family",
+            "Device family",
+            "Emoji style"
+          ]
+        },
+        {
+          "@type": "FAQPage",
+          "inLanguage": "en",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Why look at my timezone?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Timezone is one browser-visible setting discussed in reports about environment checks. This page makes it easy to inspect. It cannot establish whether, or how, a service uses that setting."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Is this the same check the service uses?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "No. This is an independent heuristic built from visible browser settings. It has no access to a service’s internal systems, and its score cannot reproduce an internal decision."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Can a high score still mean normal access?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes. The score describes a collection of browser signals, not the status of an account. A high score can coexist with normal access."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Which settings affect the result?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "System timezone, browser language order, installed and renderable fonts, local speech voices, default locale, user agent, platform and operating system all feed the observations. Privacy protections, sandboxed browsers and modified user agents can leave some observations incomplete."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Why are the terminal checks separate?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "A web page cannot read your shell’s proxy variables, clock or DNS responses. The commands let you inspect those yourself. This page never executes them and never receives their output."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "What if my account is restricted?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Only the service can explain a restriction on an account. Follow the official guidance on safeguards, warnings and appeals rather than drawing a conclusion from this score."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Does any of this leave my device?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Observations and results stay in memory on this device. If you choose to share, a summary goes to the destination you select. Loading the page makes ordinary requests to its host, and analytics are off by default and never receive scan data."
+              }
+            }
+          ]
+        },
+        {
+          "@type": "WebSite",
+          "name": "screw/claude",
+          "url": "https://screw-claude.example/",
+          "inLanguage": "en"
+        }
+      ]
+    }
+    </script>
+    <!-- meta:end -->
     <meta name="color-scheme" content="light dark">
-    <title>screw/claude — Browser clarity</title>
-    <link rel="alternate" hreflang="en" href="/">
-    <link rel="alternate" hreflang="zh-CN" href="/zh/">
-    <link rel="alternate" hreflang="ru" href="/ru/">
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="manifest" href="/site.webmanifest">
     <link rel="stylesheet" href="/styles.css">
     <link rel="stylesheet" href="/taste-variants.css">
     <link rel="stylesheet" href="/focus-variant.css">
+    <link rel="stylesheet" href="/focus-live.css">
+    <script type="module" src="/dist/ui/main.js"></script>
     <script src="/taste-variants.js" defer></script>
-    <script src="/focus-variant.js" defer></script>
     <script src="/app.js" defer></script>
   </head>
   <body>

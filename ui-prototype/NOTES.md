@@ -68,3 +68,89 @@ systemctl --user stop screw-claude-ui-preview.service
 ```
 
 Do not use `tailscale serve reset`. The systemd service is transient and is not enabled at boot. After the lifecycle fix, both language routes returned HTTP 200 over tailnet HTTPS from a separate tool invocation, and the server unit remained active.
+
+## The live application (plan implementation)
+
+The Focus presentation (`?variant=C`, the default route) is no longer a static specimen: it implements [the functionality plan](../docs/functionality-plan.md) with real local detection, weighted scoring and a working share flow. A (Paper), B (Console), D (Overview) and E (Report) stay frozen as design specimens.
+
+### What runs
+
+- **Nine local checks**, each with a fixed weight: timezone 26, language 20, font rendering 5, speech voices 13, default locale 9, UTC offset 7, browser family 7, device family 8, emoji style 5. Weights total 100 and the score is clamped to 0–100. Contributions are `Math.round(strength × weight)`.
+- **Region profiles** for China and Russia. Every check is evaluated inside each profile and the strongest result wins (ties keep profile order); within a profile the first matching table row wins. Signal strength is independent of the route language, and content language comes from the URL alone.
+- **Statuses**: `available`, `unavailable` (missing API, empty voice list), `error` (a check threw). Missing checks add no points and mark the overall result `partial`; they are never reported as absence.
+- **Bands**: low 0–30, medium 31–60, high 61–100. A *matched* signal has strength ≥ 0.25; individual severities are low < 0.25, medium 0.25–< 0.6, high ≥ 0.6. Matched signals stay in detector order.
+- **Sharing** offers a localized summary (score, band, matched signal names, page URL — no raw observations), four social destinations (X, Facebook, Telegram, Weibo), three copy platforms (小红书, 抖音, 即刻) and a locally rendered 1200×630 PNG delivered in the documented order: native file share → image clipboard → PNG download. A canceled share stays canceled; other failures fall through.
+- **Terminal commands** are copied verbatim and never executed. Nothing is uploaded, and analytics are off unless a deployment enables them.
+
+### Layout
+
+```
+ui-prototype/
+  index.html  zh/  ru/        route shells (meta injected between <!-- meta:start --> and <!-- meta:end -->)
+  app.js                      shell/router plus the frozen A/B/D/E specimens
+  build.mjs                   zero-dependency build: type-strip src → dist, inject metadata
+  src/core/                   types, rules (tables and weights), scoring, detectors
+  src/browser/                observation source, canvas card, download adapter
+  src/scan/controller.ts      sequential checks, progress events, fresh reruns, abort
+  src/content/                en/zh/ru dictionaries, commands, site config
+  src/sharing/                summary text, links, clipboard, image generation and delivery
+  src/ui/                     render layer, live entry (main.ts), review previews
+  assets/                     social preview and maskable icon
+  dist/                       committed build output (loaded by the three shells)
+  tests/                      node:test suites (307 cases)
+  tools/browser-check.mjs     dependency-free CDP smoke check
+  tools/subset-cjk.py         maintenance: regenerate the bundled CJK subsets
+```
+
+### Commands
+
+Run from `ui-prototype/`:
+
+```sh
+npm run build       # type-strip src/ into dist/ and regenerate metadata artifacts
+npm run typecheck   # tsc --noEmit
+npm test            # node --test (307 cases)
+npm run smoke       # headless Chrome check over the DevTools protocol
+npm run check       # typecheck + build + test + smoke
+```
+
+`npm test` and `npm run smoke` need the static server on `http://127.0.0.1:4173` (the smoke check drives a real browser). `npm run build` output is deterministic and committed, and the build suite fails if `dist/` or the generated metadata is stale.
+
+### Review URLs
+
+| URL | What it shows |
+| --- | --- |
+| `/` | the live application (English) |
+| `/zh/`, `/ru/` | the same application in Simplified Chinese and Russian |
+| `/?review=1&state=high` | design review: a real high-score result (76) over an injected environment |
+| `/?review=1&state=medium` | 36 points, China profile, partial-match language list |
+| `/?review=1&state=low` | 3 points, no profile |
+| `/?review=1&state=partial` | 71 points with the font check unobservable |
+| `/?review=1&state=running` | mid-scan progress snapshot |
+| `/?review=1&state=error` | the terminal error screen |
+| `/?variant=A|B|D|E` | the frozen design specimens |
+| `?review=0` | hides the review controls |
+| `?theme=light|dark` | forces an appearance |
+
+Review previews are not mock strings: each one runs the real controller over an injected environment, so the review screens cannot drift from the shipped arithmetic.
+
+### Decisions worth knowing
+
+- **Strongest-across-profiles** is deliberate: a Yandex user agent on Huawei hardware matches both tables at full strength, and the Russia profile's browser marker wins while the device stays China-flagged.
+- **A zero-strength rule keeps its profile.** A Belarusian timezone is consistent with the Russia profile at 0.0 strength, so the observation shows the profile while adding no points. A signal where no profile rule applied at all stays neutral.
+- **Bare `zh` counts as Simplified** in the primary and later positions, matching the reference; `zh-TW`/`zh-HK`/`zh-MO` and `hant` are Traditional.
+- **Fonts saturate**: one Simplified match scores 0.83 and each further match adds 0.08 up to 1; a Traditional-only set scores 0.5. Russian candidate fonts use thresholds 1 → 0.5, 2 → 0.7, 3 → 1.
+- **Presentation timing lives in the controller**, never in scoring: `PACING` only delays progress events.
+- **`SITE.origin` is `https://screw-claude.example`**, a placeholder to configure before deployment. Runtime share URLs prefer the live HTTP(S) origin.
+- **The bundled CJK subset must cover the shipped copy.** `tools/subset-cjk.py` collects the inventory from the sources and regenerates `fonts/ui-cjk.ttf` and `taste-assets/cjk.woff2` from Noto Sans SC (OFL). The smoke check verifies every rendered CJK character is inside that subset, on the page and on the canvas card, because a missing glyph is an unreadable box on machines without system CJK fonts.
+
+### Verification
+
+- 307 unit tests: rule tables and fixtures (Chinese, Russian, aliases, lowercase zones, script tags, overlapping browser/device markers, unknown platforms), font and voice permutations, weight rounding and the 30/31 and 60/61 boundaries, controller lifecycle (duplicate starts, detector exceptions, fresh reruns, abort, disposal, lock release), content parity across the three dictionaries, sharing (summary, links, clipboard denial, PNG generation, delivery order, canceled share), privacy (no network during scans with analytics on or off), the deterministic build against the committed artifacts, and a source-hygiene scan for network or storage calls.
+- A dependency-free CDP smoke check drives a real headless Chrome through all three routes: it runs an actual scan, verifies that the nine observations and the score agree with the sum of contributions, opens the share dialog, checks the four social links and three copy platforms, copies a terminal command, renders review previews, inspects the generated 1200×630 card, confirms zero third-party requests, and verifies the CJK subset covers every rendered character.
+
+### Not verified here
+
+- **Native sharing on a real device.** The share-sheet path is covered by unit tests with injected environments and by the browser check confirming the "no system sharing" fallback; an actual iOS/Android share sheet needs a real device.
+- **HTTPS hosting.** Routes, metadata, sitemap, manifest and clipboard behaviour are verified over `http://127.0.0.1:4173`; the tailnet endpoint above serves the same files over HTTPS.
+- **Browsers other than Chromium.** The smoke check drives ten user agents through the real detectors, but only Chromium renders them; engine-specific font metrics or clipboard differences are not exercised.
