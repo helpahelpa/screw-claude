@@ -19,12 +19,12 @@ Browser adapters collect local observations. Pure rules turn observations into s
 | Feature | Required behavior | Implementation responsibility |
 | --- | --- | --- |
 | Start a scan | Begin only after a visitor requests it | Scan controller |
-| Eight local checks | Collect the browser signals detailed below | Browser adapters and detector registry |
+| Nine local checks | Collect the browser signals detailed below and match each against the configured region profiles | Browser adapters and detector registry |
 | Scan progress | Report each check starting and finishing and the running score | Controller events |
 | Weighted score | Produce an integer in the 0–100 range | Pure scoring functions |
 | Result classification | Report low, medium, or high, with an explanation | Scoring and localized content |
 | Individual findings | Return observed values, severity, and point contributions | Structured detector results |
-| Matched findings | Return the qualifying signals and their contributions | Result aggregation |
+| Matched findings | Return the qualifying signals, their contributions, and the region profiles consistent with them | Result aggregation |
 | Run again | Clear the previous result and collect fresh observations | Scan controller |
 | Native sharing | Offer the device share mechanism when supported | Sharing adapter |
 | Social sharing | Prepare links for X, Facebook, Telegram, and Weibo | Pure link builders |
@@ -43,35 +43,58 @@ The scan, result, and sharing behavior follows the [public implementation](https
 
 ## Detector rules
 
-Each detector returns an observation and a normalized signal strength from 0 to 1. Preserve the reference weights and rules initially so the score is reproducible. Keep the rules in a versioned configuration, rather than scattering constants through the UI.
+Each detector returns an observation and a normalized signal strength from 0 to 1. Signals are evaluated against region profiles: versioned data describing the browser environment of an unsupported region. The China profile follows the [reference bundle](https://fuck-claude.com/_astro/Detector.astro_astro_type_script_index_0_lang.BjyUZeoD.js), and the Russia profile applies the same architecture to Russian- and Ukrainian-language signals. Evaluate the rules inside every profile and take the strongest match across profiles for each signal, so overlapping observations are not double-counted. Keep profiles, weights, and patterns in configuration rather than scattering constants through the UI.
 
-| Signal ID | Weight | Browser observation | Reference scoring rule |
+| Signal ID | Weight | Browser observation | Scoring rule |
 | --- | ---: | --- | --- |
-| `timezone` | 26 | `Intl.DateTimeFormat().resolvedOptions().timeZone` | Mainland zone or historical alias: `1`; Hong Kong, Macau, or Taipei: `0.6`; otherwise `0` |
-| `language` | 20 | `navigator.languages`, falling back to `navigator.language` | Primary Simplified Chinese: `1`; primary Traditional Chinese: `0.5`; Simplified Chinese later in the list: `0.7`; another Chinese language later: `0.4`; otherwise `0` |
-| `fonts` | 18 | Canvas text width comparisons for configured font families | Any Simplified Chinese candidate: `min(1, 0.75 + 0.08 × matched count)`; only Traditional Chinese candidates: `0.5`; none: `0` |
-| `intlLocale` | 9 | `Intl.DateTimeFormat().resolvedOptions().locale` | Simplified Chinese: `1`; another Chinese locale: `0.5`; otherwise `0` |
-| `timezoneOffset` | 7 | `new Date().getTimezoneOffset()` | `-480` minutes, corresponding to UTC+8: `0.7`; otherwise `0` |
-| `browserVendor` | 7 | Ordered matching against `navigator.userAgent` | Identified browser/WebView: `1` or `0.9`, as specified below; otherwise `0` |
-| `deviceBrand` | 8 | Ordered matching against user agent and platform | Identified device family: `0.75`–`0.9`, as specified below; otherwise `0` |
+| `timezone` | 26 | `Intl.DateTimeFormat().resolvedOptions().timeZone` | Strongest match across region zone sets: a profile's own zones `1`; related or neighbouring zones `0.3`–`0.6` where configured; otherwise `0` |
+| `language` | 20 | `navigator.languages`, falling back to `navigator.language` | Strongest match across the per-region language trees below: a profile's primary language `1`; the same language later in the list lower; unrelated languages `0` |
+| `fonts` | 5 | Canvas text width comparisons for the configured per-region families | Strongest per-region rule below: China saturation `min(1, 0.75 + 0.08 × matched count)` or Traditional-only `0.5`; Russia `0.5`, `0.7`, or `1`; none `0` |
+| `speechVoices` | 13 | Local voices returned by `speechSynthesis.getVoices()` | Strongest per-region voice language below: China `zh`; Russia `ru` or `uk`; none `0` |
+| `intlLocale` | 9 | `Intl.DateTimeFormat().resolvedOptions().locale` | Strongest per-region locale prefix below: a profile's primary locale `1`; a related locale `0.5`; otherwise `0` |
+| `timezoneOffset` | 7 | `new Date().getTimezoneOffset()` | Offset strength from the shared-offset table below, scaled by how many supported countries share it; otherwise `0` |
+| `browserVendor` | 7 | Ordered matching against `navigator.userAgent` | First match in the merged ordered table below: region-identifying browser or WebView `0.9`–`1`; otherwise `0` with a best-effort label |
+| `deviceBrand` | 8 | Ordered matching against user agent and platform | First match in the merged device family table below: `0.4`–`0.9` where configured; otherwise `0` and the exposed platform label |
 | `emoji` | 5 | OS family inferred from user agent and platform | Apple: `0.25`; Microsoft: `0.4`; Google: `0.35`; Linux/other: `0.5`; unknown: `0.4` |
 
-These are the rules in the [reference bundle](https://fuck-claude.com/_astro/Detector.astro_astro_type_script_index_0_lang.BjyUZeoD.js), rather than a validated measure of nationality or location. User agent hints can be absent or modified, as described in [MDN's user agent documentation](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/userAgent). Return uncertainty with observations instead of treating the inferred family as verified hardware.
+A region profile defines timezone IDs, language rules, font candidates, voice languages, Intl locale prefixes, browser markers, and device markers. Ship `cn` and `ru` initially; the scoring, matching, progress, and UI code must not branch on a region identifier. The table below lists candidate profiles for other unsupported regions so the schema is exercised, but treat their rows as unverified until fixtures exist.
+
+| Profile | Directly observable signals | Caveat |
+| --- | --- | --- |
+| `cn` | Mainland timezone set, Simplified/Traditional language tree, 39 font candidates, Chinese browsers | Reference profile |
+| `ru` | Russia timezone set, `ru`/`uk` language tree, Russian font candidates, `ru`/`uk` voices | Ships initially; Belarus is excluded |
+| `by` | `ru` language, `Europe/Minsk`, offset `-180` | Belarus is unsupported but its browser signals are almost identical to Russia's |
+| `ir` | `fa` language, `Asia/Tehran`, `fa-IR` locale, `-210` offset | The UTC+3:30 offset is Iran-only; regional font and browser data still needs fixtures |
+| `af` | `fa` or `ps` language, `Asia/Kabul`, `-270` offset | The UTC+4:30 offset is nearly unique to Afghanistan; sparse consumer web usage |
+| `mm` | `my` language, `Asia/Yangon`, `-390` offset | The UTC+6:30 offset is shared only with Australia's Cocos Islands |
+| `kp` | `ko` language, `Asia/Pyongyang` | No observable consumer web usage |
+| `cu`, `ve` | Spanish language, `America/Havana` / `America/Caracas` timezones | Language and offsets are largely shared with supported countries |
+| `sy` | Arabic language, `Asia/Damascus` | Signals are largely shared with supported countries |
+
+These are heuristics, not a validated measure of nationality, location, or account status. User agent hints can be absent or modified, as described in [MDN's user agent documentation](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/userAgent). Return uncertainty with observations instead of treating the inferred family as verified hardware.
 
 ### Timezone and locale matching
 
-Use these explicit timezone sets:
+Use explicit per-profile timezone sets and language trees. The China profile keeps the reference's sets:
 
-- Mainland: `Asia/Shanghai`, `Asia/Urumqi`, `Asia/Chongqing`, `Asia/Chungking`, `Asia/Harbin`, `Asia/Kashgar`.
-- Regional: `Asia/Hong_Kong`, `Asia/Macau`, `Asia/Taipei`.
+- Mainland China: `Asia/Shanghai`, `Asia/Urumqi`, `Asia/Chongqing`, `Asia/Chungking`, `Asia/Harbin`, `Asia/Kashgar` → `1`.
+- China regional: `Asia/Hong_Kong`, `Asia/Macau`, `Asia/Taipei` → `0.6`.
 
-Lowercase language tags before matching. Simplified matching means a tag starting with `zh-cn`, containing `hans`, or equal to `zh`. Traditional primary matching means a tag starting with `zh-tw`, `zh-hk`, or `zh-mo`, or containing `hant`. Evaluate language rules in the table's order: a primary Traditional Chinese language takes precedence over Simplified Chinese later in the list.
+The Russia profile uses:
 
-Read the browser's default Intl locale independently of the website's content language. Visiting the Chinese route must not make an English browser score as Chinese. The timezone is the value exposed to the browser; a separately configured shell or an emulated browser can expose a different value.
+- Full strength `1`: `Europe/Kaliningrad`, `Europe/Moscow`, `Europe/Kirov`, `Europe/Volgograd`, `Europe/Astrakhan`, `Europe/Saratov`, `Europe/Ulyanovsk`, `Europe/Samara`, `Asia/Yekaterinburg`, `Asia/Omsk`, `Asia/Novosibirsk`, `Asia/Barnaul`, `Asia/Tomsk`, `Asia/Novokuznetsk`, `Asia/Krasnoyarsk`, `Asia/Irkutsk`, `Asia/Chita`, `Asia/Yakutsk`, `Asia/Khandyga`, `Asia/Vladivostok`, `Asia/Ust-Nera`, `Asia/Magadan`, `Asia/Sakhalin`, `Asia/Srednekolymsk`, `Asia/Kamchatka`, `Asia/Anadyr`, and the legacy alias `W-SU`.
+- `Europe/Simferopol` → `1`; Crimea is excluded from supported Ukraine, and occupied Donetsk and Luhansk usually report `Europe/Moscow`, which the set already covers.
+- Neighbouring zone IDs (Belarus, Kazakhstan, Uzbekistan, Georgia, Armenia, Azerbaijan, and the rest of the former Soviet space) → `0` by default. Raise them to `0.3`–`0.4` only if a build deliberately models the wider Russian-speaking space.
 
-### Font probing
+Lowercase language tags before matching, and evaluate each profile's tree independently before taking the strongest result. China's tree keeps the reference's rules: Simplified matching means a tag starting with `zh-cn`, containing `hans`, or equal to `zh`; Traditional primary matching means a tag starting with `zh-tw`, `zh-hk`, or `zh-mo`, or containing `hant`. In order: primary Simplified `1`, primary Traditional `0.5`, Simplified later in the list `0.7`, another Chinese language later `0.4`. Russia's tree, in order: primary `ru` `1`, primary `uk` `0.7`, `ru` later `0.6`, `uk` later `0.4`; any other language, including `be`, `kk`, `ky`, `hy`, `ka`, `az`, `tt`, `ba`, `cv`, `ce`, and `sah`, scores `0`. Primary-language rules take precedence over later-list matches within a profile. Keep `uk` below `ru` because mainland Ukraine is a supported region.
 
-Use Canvas [`measureText`](https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/measureText) to compare the sample `中文字体检测ABCabc012` with three generic fallback families: `monospace`, `sans-serif`, and `serif`. For each candidate, compare its width with the fallback-only width. The reference uses a 72px sample and treats a difference greater than 0.5px with any fallback as a match.
+Match `intlLocale` by profile prefix: China Simplified `1` and other Chinese locales `0.5`; Russia `ru` `1` and `uk` `0.5`. Take the strongest match across profiles.
+
+Read the browser's default Intl locale independently of the website's content language. Visiting a localized route must not make an English browser score as that profile's locale. The timezone is the value exposed to the browser; a separately configured shell or an emulated browser can expose a different value.
+
+### Font and voice probing
+
+Use Canvas [`measureText`](https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/measureText) with a 72px sample and the three generic fallback families `monospace`, `sans-serif`, and `serif`; treat a width difference greater than 0.5px with any fallback as a match. Use a script-appropriate sample per profile: `中文字体检测ABCabc012` for China and `Проверка шрифта ABCabc012` for Russia.
 
 Keep these 31 Simplified Chinese font candidates in configuration:
 
@@ -88,39 +111,75 @@ WenQuanYi Micro Hei, WenQuanYi Zen Hei
 
 Traditional candidates are `Microsoft JhengHei`, `PMingLiU`, `MingLiU`, `DFKai-SB`, `PingFang TC`, `PingFang HK`, `Source Han Sans TW`, and `Noto Sans CJK TC`.
 
-Retain the complete matched list in local result data. The reference shortens its human-readable summary to four names with an ellipsis; expose both the list and summary so your UI can decide how much to show. This measures available font rendering, which can be affected by fallback behavior, browser protections, and fonts loaded by the page. Avoid loading candidate font families as website fonts, which would contaminate the check. Do not request permission to enumerate local fonts.
+China scores any Simplified candidate `min(1, 0.75 + 0.08 × matched count)`, only Traditional candidates `0.5`, and none `0`. Russia probes `PT Sans`, `PT Serif`, `PT Mono`, `PT Sans Narrow`, `PT Astra Sans`, `PT Astra Serif`, `GOST Type A`, and `GOST Type B`, scoring one match `0.5`, two `0.7`, three or more `1`, and none `0`. Stock Windows, macOS, and Android installations include no Russia-specific Cyrillic families, so expect Russian matches to be rare and mostly limited to Astra or ALT Linux, or engineering setups with GOST fonts; the reduced `fonts` weight reflects that. Take the strongest score across profiles.
+
+Retain the complete matched list per profile in local result data. The reference shortens its human-readable summary to four names with an ellipsis; expose both the list and summary so your UI can decide how much to show. This measures available font rendering, which can be affected by fallback behavior, browser protections, and fonts loaded by the page. Avoid loading candidate font families as website fonts, which would contaminate the check. Do not request permission to enumerate local fonts.
+
+Add the `speechVoices` detector: call `speechSynthesis.getVoices()`, wait for the `voiceschanged` event with a short timeout, and count only voices with `localService === true`, because network voices such as Chrome's Google voices would otherwise make the check universal. Score the strongest per-profile voice language: China `zh` `1`; Russia `ru` `1` and `uk` `0.6`; no matching voice `0`. An empty voice list or a missing API is `unavailable`, not a confirmed absence, and must not redistribute its weight. Firefox on Linux commonly returns an empty list, which produces an explainable partial result rather than a zero.
+
+### Timezone offset
+
+Keep the `new Date().getTimezoneOffset()` observation at 7 points, but scale strength by how much of the offset's population lives in countries where Anthropic operates. The `timezone` ID remains the primary discriminator; this table mostly separates offsets unique to unsupported regions from offsets shared with large supported populations.
+
+| `getTimezoneOffset()` | UTC | Zones using it | Supported countries sharing it | Strength |
+| --: | :--: | --- | --- | --: |
+| `-120` | +2 | Russia (Kaliningrad) | Large: much of Europe, Israel, Egypt, South Africa, Ukraine in winter | 0.1 |
+| `-180` | +3 | Russia (Moscow, Kirov, Volgograd, Simferopol), Belarus, Syria | Large: Turkey, Saudi Arabia, Kenya, Tanzania, Ethiopia, Iraq, Ukraine in summer | 0.3 |
+| `-210` | +3:30 | Iran | None | 1 |
+| `-240` | +4 | Russia (Samara, Astrakhan, Saratov, Ulyanovsk) | UAE, Oman, Georgia, Armenia, Azerbaijan, Mauritius, Seychelles | 0.25 |
+| `-270` | +4:30 | Afghanistan | None | 1 |
+| `-300` | +5 | Russia (Yekaterinburg) | Pakistan, Kazakhstan, Uzbekistan, Turkmenistan, Tajikistan, Maldives | 0.15 |
+| `-360` | +6 | Russia (Omsk) | Bangladesh, Kyrgyzstan, Bhutan | 0.2 |
+| `-390` | +6:30 | Myanmar | Australia's Cocos Islands only | 0.9 |
+| `-420` | +7 | Russia (Novosibirsk, Krasnoyarsk, Barnaul, Tomsk, Novokuznetsk) | Vietnam, Thailand, Indonesia, Cambodia, Laos, Mongolia | 0.15 |
+| `-480` | +8 | China (mainland), Russia (Irkutsk, Chita) | Philippines, Malaysia, Singapore, Taiwan, Australia, Brunei, Mongolia, Indonesia | 0.15 |
+| `-540` | +9 | Russia (Yakutsk, Khandyga), North Korea | Japan, South Korea, Indonesia, Palau, Timor-Leste | 0.1 |
+| `-600` | +10 | Russia (Vladivostok, Ust-Nera) | Australia, Papua New Guinea, Micronesia | 0.2 |
+| `-660` | +11 | Russia (Magadan, Sakhalin, Srednekolymsk) | Small Pacific states: Solomon Islands, Vanuatu, Papua New Guinea, Micronesia, Australia | 0.8 |
+| `-720` | +12 | Russia (Kamchatka, Anadyr) | New Zealand, Fiji, Kiribati, Marshall Islands, Nauru, Tuvalu | 0.5 |
+| `+240` | −4 | Venezuela (Caracas) | Atlantic Canada, Caribbean islands, Chile in winter | 0.15 |
+| `+300` | −5 | Cuba (Havana, winter) | United States and Canada Eastern, Colombia, Peru, Panama | 0.1 |
+
+Offsets absent from this table score `0` by default. The Iran, Afghanistan, and Myanmar rows are effectively region-identifying because no supported country uses those offsets; the rest are deliberately low because large supported populations share them. Recheck the supported-country lists before changing them; the policy page changes over time.
 
 ### Browser and device matching
 
-Use ordered, case-insensitive patterns and stop at the first match. Keep the patterns in configuration and cover overlaps with fixtures.
+Use one merged, ordered, case-insensitive pattern table per detector, and stop at the first match. Keep the patterns in configuration and cover overlaps with fixtures. The China families come from the reference; verify the Russia markers against real user agents before shipping and record them in fixtures.
 
-| Browser or WebView family | Markers | Strength |
-| --- | --- | ---: |
-| WeChat | `micromessenger` | 1 |
-| QQ | `qqbrowser`, `mqqbrowser` | 1 |
-| Quark | `quark` | 1 |
-| UC | `ucbrowser`, `ucweb` | 1 |
-| Baidu | `baidubrowser`, `baiduhd`, `baiduboxapp` | 1 |
-| Sogou | `sogoumobilebrowser`, `metasr` | 0.9 |
-| 360 | `360se`, `360ee`, `qhbrowser` | 0.9 |
-| 2345 | `2345explorer` | 0.9 |
-| Mi Browser | `miuibrowser` | 0.9 |
-| Huawei | `huawei` with an optional `browser` suffix | 0.9 |
-| OPPO | `heytapbrowser`, `hetapbrowser`, `oppobrowser` | 0.9 |
-| vivo | `vivobrowser` | 0.9 |
+| Region | Browser or WebView family | Markers | Strength |
+| --- | --- | --- | ---: |
+| China | WeChat | `micromessenger` | 1 |
+| China | QQ | `qqbrowser`, `mqqbrowser` | 1 |
+| China | Quark | `quark` | 1 |
+| China | UC | `ucbrowser`, `ucweb` | 1 |
+| China | Baidu | `baidubrowser`, `baiduhd`, `baiduboxapp` | 1 |
+| China | Sogou | `sogoumobilebrowser`, `metasr` | 0.9 |
+| China | 360 | `360se`, `360ee`, `qhbrowser` | 0.9 |
+| China | 2345 | `2345explorer` | 0.9 |
+| China | Mi Browser | `miuibrowser` | 0.9 |
+| China | Huawei | `huawei` with an optional `browser` suffix | 0.9 |
+| China | OPPO | `heytapbrowser`, `hetapbrowser`, `oppobrowser` | 0.9 |
+| China | vivo | `vivobrowser` | 0.9 |
+| Russia | Yandex | `yabrowser`, `yowser` | 1 |
+| Russia | Chromium GOST | `chromium gost` | 1 |
+| Russia | SberBrowser | `sberbrowser` | 0.95 |
+| Russia | Atom or Mail.ru | `atom`, `mrchrome` | 0.9 |
+| Russia | VK or OK in-app WebView | `vkandroidapp`, `okandroidapp` | 0.9 |
 
 For unmatched user agents, return a best-effort browser label, checking Edge before Chrome, then Safari and Firefox, while assigning zero points.
 
-| Device family | Markers | Strength |
-| --- | --- | ---: |
-| HarmonyOS | `harmonyos`, `hmos` | 0.9 |
-| Huawei or Honor | `huawei`, `honor` | 0.85 |
-| Xiaomi or Redmi | `xiaomi`, `redmi`, `miui`, a standalone `mi` followed by whitespace, or an `m` plus four-digit model identifier | 0.8 |
-| OPPO, OnePlus, or realme | `oppo`, `oneplus`, `realme`, `heytap` | 0.8 |
-| vivo or iQOO | `vivo`, `iqoo` | 0.8 |
-| Meizu | `meizu` | 0.75 |
+| Region | Device family | Markers | Strength |
+| --- | --- | --- | ---: |
+| China | HarmonyOS | `harmonyos`, `hmos` | 0.9 |
+| China | Huawei or Honor | `huawei`, `honor` | 0.85 |
+| China | Xiaomi or Redmi | `xiaomi`, `redmi`, `miui`, a standalone `mi` followed by whitespace, or an `m` plus four-digit model identifier | 0.8 |
+| China | OPPO, OnePlus, or realme | `oppo`, `oneplus`, `realme`, `heytap` | 0.8 |
+| China | vivo or iQOO | `vivo`, `iqoo` | 0.8 |
+| China | Meizu | `meizu` | 0.75 |
+| Russia | Russian-market brands | `bq-`, `dexp`, `inoi`, `digma`, `texet`, `irbis`, `prestigio` | 0.75 |
+| Russia | Transsion | `tecno`, `infinix`, `itel` | 0.4 |
 
-If nothing matches, return the exposed platform label or an unavailable label and zero strength. In particular, keep the Huawei browser rule's broad matching visible in configuration; it can overlap with a device marker.
+If nothing matches, return the exposed platform label or an unavailable label and zero strength. In particular, keep the Huawei browser rule's broad matching visible in configuration; it can overlap with a device marker. Chinese device families remain in the table for every profile because those devices are also common in Russia; the first match wins, so order still matters.
 
 ### Emoji signal
 
@@ -137,7 +196,7 @@ contribution = Math.round(strength × weight)
 total = clamp(sum(contributions), 0, 100)
 ```
 
-Do not round only after adding fractional contributions; that can produce a different result. The weights add up to 100, but several detectors have maximum strengths below 1, so the configured rules need not reach 100.
+Do not round only after adding fractional contributions; that can produce a different result. A signal contributes at most once, using its strongest match across region profiles, so profiles do not add separate scores. The weights add up to 100, but several detectors have maximum strengths below 1, so the configured rules need not reach 100.
 
 Classify the final score as low for 0–30, medium for 31–60, and high for 61–100. Classify individual signals as low below `0.25`, medium from `0.25` to below `0.6`, and high at `0.6` or above. A matched signal has strength at least `0.25`, independently of the overall classification. Preserve detector order in the matched list.
 
@@ -145,8 +204,9 @@ Return typed records along these lines:
 
 ```ts
 type Band = 'low' | 'medium' | 'high';
+type RegionId = 'cn' | 'ru';
 type SignalId =
-  | 'timezone' | 'language' | 'fonts' | 'intlLocale'
+  | 'timezone' | 'language' | 'fonts' | 'speechVoices' | 'intlLocale'
   | 'timezoneOffset' | 'browserVendor' | 'deviceBrand' | 'emoji';
 
 interface SignalResult {
@@ -157,6 +217,7 @@ interface SignalResult {
   weight: number;
   contribution: number;
   severity: Band | null;
+  region: RegionId | null;
 }
 
 interface ScanResult {
@@ -167,10 +228,11 @@ interface ScanResult {
   partial: boolean;
   signals: SignalResult[];
   hits: SignalId[];
+  matchedRegions: RegionId[];
 }
 ```
 
-The status, partial flag, and rules version are proposed improvements to make results explainable. For compatibility, an unavailable or failed detector contributes zero without redistributing its weight. Mark the overall result partial and do not label a failed check as a confirmed absence.
+The status, partial flag, rules version, signal `region`, and `matchedRegions` are proposed improvements to make results explainable. Extend `RegionId` when a profile is added. For compatibility, an unavailable or failed detector contributes zero without redistributing its weight. Mark the overall result partial and do not label a failed check as a confirmed absence.
 
 ## Scan lifecycle and integration contract
 
@@ -180,7 +242,7 @@ Use states `idle`, `running`, `complete`, and `error`. Each signal has a progres
 
 On each new run, clear previous results and sharing payloads. Reject or ignore concurrent starts while a scan is running. Collect observations again for every run; do not reuse cached detector results. A failed individual check must allow the other checks to finish.
 
-The reference processes the eight signals sequentially, with roughly five seconds of artificial delays. Preserve progress events without embedding presentation timing in the scoring functions. Optional pacing belongs in the controller configuration; your UI can choose when and how to animate progress. The initial result and sharing payload are absent until completion.
+The scan processes the nine signals sequentially. The reference runs its eight sequential signals with roughly five seconds of artificial delays; preserve progress events without embedding presentation timing in the scoring functions. Optional pacing belongs in the controller configuration; your UI can choose when and how to animate progress. The initial result and sharing payload are absent until completion.
 
 ## Sharing and export
 
@@ -249,7 +311,7 @@ Use explicit routes `/` for English and `/zh/` for Simplified Chinese, matching 
 
 Determine the content language from the route, independently of detected browser preferences. Allow explicit navigation between languages, use English as a dictionary fallback, and require a fresh scan after a full page navigation. Do not persist results to preserve them across routes.
 
-Create original content for these seven FAQ subjects: reported timezone checks; how the heuristic differs from any internal check; why a higher score can coexist with normal account access; which settings affect observations; terminal diagnostics; account restrictions; and what data leaves the device. Also explain the eight checks, weights, hit threshold, score bands, and limitations. These subjects are present on the [English reference](https://fuck-claude.com/) and [Chinese reference](https://fuck-claude.com/zh/).
+Create original content for these seven FAQ subjects: reported timezone checks; how the heuristic differs from any internal check; why a higher score can coexist with normal account access; which settings affect observations; terminal diagnostics; account restrictions; and what data leaves the device. Also explain the nine checks, the region-profile model and which regions matched, weights, hit threshold, score bands, and limitations. These subjects are present on the [English reference](https://fuck-claude.com/) and [Chinese reference](https://fuck-claude.com/zh/).
 
 Keep the official support destination configurable. The reference links to [Anthropic safeguards, warnings, and appeals](https://support.claude.com/en/articles/8241253-safeguards-warnings-and-appeals). Opening that resource is the support feature; the application does not inspect or appeal an account on a visitor's behalf.
 
@@ -265,8 +327,8 @@ Include a web manifest with app name, start URL, standalone display metadata, an
 
 ## Implementation sequence
 
-1. **Define the core contracts and rules.** Create signal IDs, weights, ordered pattern tables, font candidate lists, result types, and a versioned rules configuration. Add pure strength evaluation, contribution calculation, classification, and hit selection. Completion means deterministic fixtures reproduce the reference arithmetic and threshold boundaries.
-2. **Implement browser observation adapters.** Collect timezone, languages, font measurements, Intl locale, offset, user agent, and platform through an injectable environment interface. Completion means all eight detectors work without a UI and independently report unavailable observations.
+1. **Define the core contracts and rules.** Create signal IDs, weights, region profiles, ordered pattern tables, font candidate lists, voice language sets, result types, and a versioned rules configuration. Add pure strength evaluation across profiles, contribution calculation, classification, and hit selection. Completion means deterministic fixtures reproduce the documented per-profile arithmetic and threshold boundaries.
+2. **Implement browser observation adapters.** Collect timezone, languages, font measurements, speech voices, Intl locale, offset, user agent, and platform through an injectable environment interface. Completion means all nine detectors work without a UI and independently report unavailable observations.
 3. **Implement the scan controller.** Add progress events, fresh reruns, concurrent-run protection, result aggregation, disposal, and isolated detector failures. Completion means a consumer can subscribe and run complete scans without inspecting the DOM.
 4. **Add localized content and terminal checks.** Supply both language dictionaries, original educational content, FAQ definitions, support URL, and exact command strings. Completion means any result or command can be formatted in either language without affecting scoring.
 5. **Add text sharing and clipboard adapters.** Implement social URLs, native share, platform text, and command copying. Completion means a finished result produces encoded localized payloads, and denied clipboard or share operations return usable outcomes.
@@ -278,9 +340,9 @@ Suggested module groups are `core/rules`, `core/scoring`, `core/types`, `browser
 
 ## Acceptance checks
 
-- Detector fixtures cover Chinese and non-Chinese timezones, historical aliases, language ordering, script tags, UTC offset sign, ordered UA overlaps, and unknown platforms.
-- Font fixtures cover zero matches, Traditional-only matches, one Simplified match, saturation, measurement tolerance, and unavailable Canvas.
-- Scoring checks cover per-signal rounding, scores 30/31 and 60/61, strengths just below and at 0.25 and 0.6, and a low overall score with matched signals.
+- Detector fixtures cover Chinese, Russian, and non-target timezones, historical aliases, per-profile language ordering, script tags, UTC offset sign, ordered browser and device overlaps, unknown platforms, and region-profile selection.
+- Font fixtures cover zero matches, Traditional-only matches, one Simplified match, Russian candidates, saturation where applicable, measurement tolerance, and unavailable Canvas. Voice fixtures cover Chinese and Russian voices, Ukrainian voices, network-only voices, empty lists, and missing APIs.
+- Scoring checks cover per-signal rounding, strongest-match selection across profiles, scores 30/31 and 60/61, strengths just below and at 0.25 and 0.6, and a low overall score with matched signals.
 - Lifecycle checks cover the initial empty state, progress ordering, duplicate starts, detector exceptions, fresh reruns, disposal, and an error that releases the running lock.
 - Localization checks ensure route language does not affect detected locale, all message keys exist, and Chinese share text encodes correctly.
 - Sharing checks cover absent native sharing, cancellation, clipboard denial, Unicode payloads, image export errors, image copying, and PNG download fallback. Test native sharing on a supported device rather than relying only on mocks.
