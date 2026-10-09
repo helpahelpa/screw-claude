@@ -101,11 +101,52 @@ describe('mount-relative rendering', () => {
   });
 
   it('renders nine observations for an idle state and a result state', async () => {
+    const rows = /class="focus-signal[ "]/g;
     const idle = renderPage(await viewModel('/', false));
-    assert.equal((idle.match(/class="focus-signal"/g) ?? []).length, 9);
+    assert.equal((idle.match(rows) ?? []).length, 9);
+    // Matched rows carry an extra class, so an exact `focus-signal"` pattern
+    // would undercount them.
     const result = renderPage(await viewModel('/'));
-    assert.equal((result.match(/class="focus-signal"/g) ?? []).length, 9);
+    assert.equal((result.match(rows) ?? []).length, 9);
     assert.match(result, /focus-result-score/);
+  });
+
+  it('breaks the score down once, without a duplicate findings list', async () => {
+    const vm = await viewModel('/');
+    const html = renderPage(vm);
+    const result = vm.state.result;
+    assert.ok(result);
+    // The matched rows live inside the single breakdown, not in a second table.
+    assert.equal(html.includes('id="findings"'), false);
+    assert.equal((html.match(/focus-findings-list/g) ?? []).length, 0);
+    const matchedRows = (html.match(/class="focus-signal is-matched"/g) ?? []).length;
+    assert.equal(matchedRows, result.hits.length);
+    assert.equal((html.match(/focus-tag is-matched/g) ?? []).length, result.hits.length);
+    // The headline count replaces the removed section's summary line.
+    assert.match(html, /focus-match-summary/);
+    assert.ok(
+      html.includes(`>${result.hits.length} of ${result.signals.length} checks matched<`),
+      'the score panel should count the matched checks',
+    );
+    // Every contribution still appears exactly once, in detector order.
+    for (const signal of result.signals) {
+      const points = (html.match(new RegExp(`<strong>\\+${signal.contribution}</strong>`, 'g')) ?? []).length;
+      assert.ok(points >= 1, `missing contribution for ${signal.id}`);
+    }
+  });
+
+  it('sums the single breakdown to the score', async () => {
+    const vm = await viewModel('/');
+    const html = renderPage(vm);
+    assert.ok(vm.state.result);
+    const contributions = [...html.matchAll(/focus-signal-points"><strong>\+(\d+)<\/strong>/g)].map(match =>
+      Number(match[1]),
+    );
+    assert.equal(contributions.length, 9);
+    assert.equal(
+      contributions.reduce((total, value) => total + value, 0),
+      vm.state.result.total,
+    );
   });
 
   it('includes the share destinations from the view model', async () => {

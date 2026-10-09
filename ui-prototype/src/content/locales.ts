@@ -53,8 +53,8 @@ export interface Messages {
 
   /* observations */
   observationsHeading: string;
-  findingsHeading: string;
-  findingsNone: string;
+  matchedTag: string;
+  matchedSummary: string;
   regionsHeading: string;
   regionsNone: string;
   observedLabel: string;
@@ -319,7 +319,7 @@ const EN: Messages = {
   bodyLow:
     'Few weighted signals matched. In this heuristic, the browser environment leaves a light footprint.',
   bodyMedium:
-    'Several settings contributed to the score. The findings below show exactly which ones, and how much each added.',
+    'Several settings contributed to the score. The list below shows exactly which ones, and how much each added.',
   bodyHigh:
     'Many weighted signals matched. A high score describes visible settings only; it is not a statement about your account.',
   partialLabel: 'Partial result',
@@ -334,8 +334,8 @@ const EN: Messages = {
   sampleNotice: 'Sample result for review. No scan ran.',
 
   observationsHeading: 'All nine observations',
-  findingsHeading: 'Matched findings',
-  findingsNone: 'No weighted finding matched. The observations below still show what this browser exposes.',
+  matchedTag: 'Matched',
+  matchedSummary: '{matched} of {total} checks matched',
   regionsHeading: 'Region profiles consistent with the result',
   regionsNone: 'No region profile matched a weighted signal.',
   observedLabel: 'Observation',
@@ -513,7 +513,7 @@ const ZH: Messages = {
   bandMedium: '中等信号',
   bandHigh: '高信号',
   bodyLow: '匹配到的加权信号很少。在这套启发式规则中，该浏览器环境的特征较弱。',
-  bodyMedium: '有若干设置产生了分数。下方的观察结果会说明每个匹配项以及各自贡献的分数。',
+  bodyMedium: '有若干设置产生了分数。下方的列表会说明每个匹配项以及各自贡献的分数。',
   bodyHigh: '匹配到的加权信号较多。高分只描述可见的设置，并不代表你的账号状态。',
   partialLabel: '部分结果',
   partialBody: '有项目无法读取：{names}。缺失项目不计分，因此总分应视为下限。',
@@ -525,8 +525,8 @@ const ZH: Messages = {
   sampleNotice: '这是用于查看设计效果的示例结果，未执行检测。',
 
   observationsHeading: '九项观察结果',
-  findingsHeading: '匹配到的信号',
-  findingsNone: '没有加权信号匹配。下面的观察结果仍会展示该浏览器公开的信息。',
+  matchedTag: '已匹配',
+  matchedSummary: '9 项检查中匹配 {matched} 项',
   regionsHeading: '与结果相符的区域画像',
   regionsNone: '没有区域画像与加权信号匹配。',
   observedLabel: '观察结果',
@@ -718,8 +718,8 @@ const RU: Messages = {
   sampleNotice: 'Пример результата для просмотра. Проверка не выполнялась.',
 
   observationsHeading: 'Все девять наблюдений',
-  findingsHeading: 'Совпавшие признаки',
-  findingsNone: 'Ни один взвешенный признак не совпал. Наблюдения ниже всё равно показывают, что раскрывает этот браузер.',
+  matchedTag: 'Совпало',
+  matchedSummary: 'Совпало проверок: {matched} из {total}',
   regionsHeading: 'Региональные профили, согласующиеся с результатом',
   regionsNone: 'Ни один региональный профиль не совпал со взвешенным признаком.',
   observedLabel: 'Наблюдение',

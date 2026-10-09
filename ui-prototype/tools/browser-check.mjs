@@ -244,8 +244,10 @@ async function checkRoute(cdp, locale, pathname) {
       score: Number(document.querySelector('.focus-result-score strong').textContent),
       band: document.querySelector('.focus-band-label').textContent.trim(),
       contributions: [...document.querySelectorAll('.focus-signal-points strong')].map(node => Number(node.textContent.replace('+', ''))),
-      findings: document.querySelectorAll('.focus-finding').length,
-      matches: [...document.querySelectorAll('.focus-finding .focus-finding-points')].map(node => Number(node.textContent.replace(/[^0-9]/g, ''))),
+      matched: document.querySelectorAll('.focus-signal.is-matched').length,
+      matchSummary: document.querySelector('.focus-match-summary')?.textContent?.trim() ?? '',
+      duplicateSection: document.querySelectorAll('#findings').length,
+      matchedPoints: [...document.querySelectorAll('.focus-signal.is-matched .focus-signal-points strong')].map(node => Number(node.textContent.replace(/[^0-9]/g, ''))),
       observations: [...document.querySelectorAll('.focus-signal-value')].map(node => node.textContent.trim()),
       reviewControls: !!document.querySelector('.focus-state-controls'),
     })`),
@@ -254,8 +256,15 @@ async function checkRoute(cdp, locale, pathname) {
   check(result.contributions.length === 9, `${name}: every check reports its contribution`);
   const sum = result.contributions.reduce((total, value) => total + value, 0);
   check(sum === result.score, `${name}: score equals the sum of contributions (${sum} vs ${result.score})`);
-  check(result.findings >= 1, `${name}: at least one matched finding is listed`);
-  check(result.findings === result.matches.length, `${name}: every matched finding shows its points`);
+  // One list only: matched rows are marked inside the full breakdown.
+  check(result.duplicateSection === 0, `${name}: no separate matched-findings section`);
+  check(result.matched >= 1, `${name}: at least one matched row is marked`);
+  check(result.matched === result.matchedPoints.length, `${name}: every matched row shows its points`);
+  check(
+    result.matchedPoints.every(points => points > 0),
+    `${name}: matched rows contributed points (${result.matchedPoints.join(', ')})`,
+  );
+  check(/\(\d+\)|\d+/.test(result.matchSummary), `${name}: the score panel counts matched checks`);
   check(result.observations.every(Boolean), `${name}: every observation has a value`);
   check(result.reviewControls === false, `${name}: no review controls outside review mode`);
   check(/^\d+$/.test(String(result.score)), `${name}: numeric score rendered`);
@@ -379,13 +388,13 @@ async function checkReviewPreview(cdp, pathname) {
       notice: !!document.querySelector('.focus-sample-notice'),
       controls: !!document.querySelector('.focus-state-controls'),
       score: document.querySelector('.focus-result-score strong')?.textContent ?? '',
-      findings: document.querySelectorAll('.focus-finding').length,
+      matched: document.querySelectorAll('.focus-signal.is-matched').length,
     })`),
   );
   check(preview.notice, `${name}: the sample notice is shown`);
   check(preview.controls, `${name}: review controls are available`);
   check(/^\d+$/.test(preview.score), `${name}: a preview score is rendered (${preview.score})`);
-  check(preview.findings >= 1, `${name}: preview findings are rendered`);
+  check(preview.matched >= 1, `${name}: preview matched rows are marked`);
 
   const cycles = await cdp.evaluate(`(async () => {
     const seen = [];

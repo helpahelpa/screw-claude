@@ -63,7 +63,7 @@ export function buildImageContent(
     score: String(result.total),
     outOf: messages.outOf,
     band: result.band === 'high' ? messages.bandHigh : result.band === 'medium' ? messages.bandMedium : messages.bandLow,
-    matchedLabel: messages.findingsHeading,
+    matchedLabel: messages.shareMatchedLabel,
     matchedNames: capped,
     matchedIds: result.hits.slice(0, RULES.imageHitLimit),
     noneMatched: messages.noneMatched,

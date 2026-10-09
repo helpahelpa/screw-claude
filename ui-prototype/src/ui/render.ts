@@ -183,7 +183,9 @@ function observations(result: ScanResult | null, vm: ViewModel): string {
     .map((name, index) => {
       const id = SIGNAL_IDS[index];
       const signal = result?.signals.find(entry => entry.id === id) ?? null;
+      const matched = !!result && result.hits.includes(id);
       const tags = [
+        matched ? `<span class="focus-tag is-matched">${escapeHtml(messages.matchedTag)}</span>` : '',
         signal?.severity ? `<span class="focus-tag">${escapeHtml(severityLabel(signal, messages))}</span>` : '',
         signal?.region ? `<span class="focus-tag is-region">${escapeHtml(profileLabel(signal.region, messages))}</span>` : '',
         signal && signal.status !== 'available'
@@ -195,7 +197,7 @@ function observations(result: ScanResult | null, vm: ViewModel): string {
       const points = signal
         ? `<strong>+${signal.contribution}</strong><span>${escapeHtml(formatMessage(messages.pointsOfWeight, { weight: signal.weight }))}</span>`
         : `<strong>${weightOf(id)}</strong><span>${escapeHtml(messages.weightLabel)}</span>`;
-      return `<div class="focus-signal" data-signal="${id}"><dt>${glyph(iconFor(id))}<span>${escapeHtml(name)}</span></dt><dd class="focus-signal-value ${signal ? 'is-observed' : ''}">${describe(signal, index, vm)}</dd><dd class="focus-signal-points">${points}</dd><dd class="focus-signal-meta">${tags}</dd>${fontDetail(signal, messages)}</div>`;
+      return `<div class="focus-signal${matched ? ' is-matched' : ''}" data-signal="${id}"><dt>${glyph(iconFor(id))}<span>${escapeHtml(name)}</span></dt><dd class="focus-signal-value ${signal ? 'is-observed' : ''}">${describe(signal, index, vm)}</dd><dd class="focus-signal-points">${points}</dd><dd class="focus-signal-meta">${tags}</dd>${fontDetail(signal, messages)}</div>`;
     })
     .join('');
 
@@ -241,7 +243,7 @@ function checkPanel(vm: ViewModel): string {
 
   const result = state.result;
   const body = result.partial ? partialBody(result, vm) : bandBody(result.band, messages);
-  return `<section id="check" class="scan-panel focus-check focus-result" aria-live="polite" aria-label="${label}"><div class="focus-result-top"><span>${label}</span><span class="focus-band-label">${escapeHtml(bandLabel(result.band, messages))}</span></div><div class="focus-result-score"><strong>${result.total}</strong><span>${escapeHtml(messages.outOf)}</span></div><p class="focus-result-description">${clean(body)}</p>${regionsLine(result, messages)}<div class="focus-result-actions"><button class="button primary" data-action="reset">${escapeHtml(messages.again)}${glyph('refresh')}</button><button class="focus-text-button" data-action="share">${escapeHtml(messages.share)}${glyph('upload')}</button></div>${result.partial ? `<p class="focus-partial-note">${glyph('alert-triangle')}<span>${escapeHtml(messages.partialLabel)}</span></p>` : ''}</section>`;
+  return `<section id="check" class="scan-panel focus-check focus-result" aria-live="polite" aria-label="${label}"><div class="focus-result-top"><span>${label}</span><span class="focus-band-label">${escapeHtml(bandLabel(result.band, messages))}</span></div><div class="focus-result-score"><strong>${result.total}</strong><span>${escapeHtml(messages.outOf)}</span></div><p class="focus-result-description">${clean(body)}</p><p class="focus-match-summary">${escapeHtml(formatMessage(messages.matchedSummary, { matched: result.hits.length, total: result.signals.length }))}</p>${regionsLine(result, messages)}<div class="focus-result-actions"><button class="button primary" data-action="reset">${escapeHtml(messages.again)}${glyph('refresh')}</button><button class="focus-text-button" data-action="share">${escapeHtml(messages.share)}${glyph('upload')}</button></div>${result.partial ? `<p class="focus-partial-note">${glyph('alert-triangle')}<span>${escapeHtml(messages.partialLabel)}</span></p>` : ''}</section>`;
 }
 
 function partialBody(result: ScanResult, vm: ViewModel): string {
@@ -258,28 +260,6 @@ function regionsLine(result: ScanResult, messages: Messages): string {
   }
   const names = result.matchedRegions.map(region => profileLabel(region, messages)).join(' · ');
   return `<p class="focus-regions-line">${escapeHtml(messages.regionsHeading)}: <strong>${escapeHtml(names)}</strong></p>`;
-}
-
-/* -------------------------------------------------------------- findings -- */
-
-function findings(vm: ViewModel): string {
-  const result = vm.state.result;
-  if (!result) return '';
-  const { messages } = vm;
-  if (result.hits.length === 0) {
-    return `<section id="findings" class="focus-section" aria-labelledby="focus-findings-title">${sectionTitle('focus-findings-title', messages.findingsHeading, 'flag')}<p class="focus-prose-note">${clean(messages.findingsNone)}</p></section>`;
-  }
-  const items = result.hits
-    .map(id => result.signals.find(signal => signal.id === id))
-    .filter((signal): signal is SignalResult => !!signal)
-    .map(signal => {
-      const region = signal.region
-        ? `<span class="focus-tag is-region">${escapeHtml(profileLabel(signal.region, messages))}</span>`
-        : `<span class="focus-tag is-region">${escapeHtml(messages.severityLabel)} ${escapeHtml(severityLabel(signal, messages))}</span>`;
-      return `<li class="focus-finding"><span class="focus-finding-name">${glyph(iconFor(signal.id))}<span>${escapeHtml(nameOf(signal.id, messages))}</span></span><span class="focus-finding-value">${describe(signal, indexOf(signal.id), vm)}</span><span class="focus-finding-points">+${signal.contribution}<span class="focus-sr-only"> ${escapeHtml(messages.pointsLabel)}</span></span>${region}</li>`;
-    })
-    .join('');
-  return `<section id="findings" class="focus-section" aria-labelledby="focus-findings-title">${sectionTitle('focus-findings-title', messages.findingsHeading, 'flag')}<ul class="focus-findings-list">${items}</ul></section>`;
 }
 
 /* ------------------------------------------------------------- education -- */
@@ -366,7 +346,7 @@ export function renderPage(vm: ViewModel): string {
   const { messages } = vm;
   spriteBase = spriteUrlFor(vm.root);
   const notice = vm.preview ? `<p class="focus-sample-notice">${escapeHtml(messages.sampleNotice)}</p>` : '';
-  return `${header(vm)}<main class="main-content focus-main" id="main"><section class="focus-introduction" aria-labelledby="focus-title"><h1 id="focus-title">${clean(messages.headline)}<br><span>${clean(messages.headlineAccent)}</span></h1><p class="focus-intro">${clean(messages.intro)}</p>${notice}${checkPanel(vm)}</section><section class="focus-information" aria-label="${escapeHtml(messages.scopeHeading)}">${findings(vm)}${observations(vm.state.result, vm)}${education(vm)}${terminal(vm)}${faq(vm)}</section></main><footer class="focus-footer"><p>${clean(messages.footer)}</p><p class="focus-footer-note">${escapeHtml(messages.footerNote)}</p></footer>${reviewControls(vm)}${shareDialog(vm)}`;
+  return `${header(vm)}<main class="main-content focus-main" id="main"><section class="focus-introduction" aria-labelledby="focus-title"><h1 id="focus-title">${clean(messages.headline)}<br><span>${clean(messages.headlineAccent)}</span></h1><p class="focus-intro">${clean(messages.intro)}</p>${notice}${checkPanel(vm)}</section><section class="focus-information" aria-label="${escapeHtml(messages.scopeHeading)}">${observations(vm.state.result, vm)}${education(vm)}${terminal(vm)}${faq(vm)}</section></main><footer class="focus-footer"><p>${clean(messages.footer)}</p><p class="focus-footer-note">${escapeHtml(messages.footerNote)}</p></footer>${reviewControls(vm)}${shareDialog(vm)}`;
 }
 
 export { SIGNAL_IDS, PREVIEW_ORDER, profileLabel, bandLabel };
