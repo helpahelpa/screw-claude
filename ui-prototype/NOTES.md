@@ -173,4 +173,4 @@ Two rules make one build work both locally and under a project subdirectory:
 
 `SITE.origin` and `SITE.basePath` describe the *deployment* and are used only for absolute metadata: canonical and alternate links, Open Graph and Twitter images, structured data, `sitemap.xml` and `robots.txt`. Change both together if the site moves, then run `npm run build`.
 
-`npm run smoke` now includes a `mounted` pass: it serves the built output under `/screw-claude/` from a throwaway in-process server and repeats the page, scan, sharing, metadata and asset checks there, which is exactly the Pages layout.
+`npm run smoke` drives a real headless Chrome; add `-- --url <deployment>` to run the same 261 checks against a published site (this is how the live deployment was verified). It includes a `mounted` pass: it serves the built output under `/screw-claude/` from a throwaway in-process server and repeats the page, scan, sharing, metadata and asset checks there, which is exactly the Pages layout.

@@ -22,11 +22,12 @@ const argValue = (name, fallback) => {
 };
 
 const PORT = Number(argValue('--port', '4173'));
+/** Target any deployment: `--url https://user.github.io/repo/`. */
+const BASE = (argValue('--url', `http://127.0.0.1:${PORT}`)).replace(/\/$/, '');
 const MOUNT_PORT = Number(argValue('--mount-port', '4199'));
 const MOUNT_BASE = '/screw-claude/';
 const SKIP_MOUNTED = args.includes('--no-mounted-pass');
 const CHROME = argValue('--chrome', 'google-chrome');
-const BASE = `http://127.0.0.1:${PORT}`;
 
 const failures = [];
 const notes = [];
@@ -277,9 +278,12 @@ async function checkRoute(cdp, locale, pathname) {
       links[3].includes('service.weibo.com/share/share.php'),
     `${name}: share link bases are correct`,
   );
+  // Works against localhost and against a deployed origin: the share payload
+  // must carry the page's own root URL.
+  const pageRoot = await cdp.evaluate(`document.querySelector('.brand').href`);
   check(
-    links.every(url => url.includes(encodeURIComponent('http://127.0.0.1')) || url.includes('127.0.0.1')),
-    `${name}: the page URL is included in share links`,
+    links.every(url => url.includes(encodeURIComponent(pageRoot)) || decodeURIComponent(url).includes(pageRoot)),
+    `${name}: share links carry the page URL (${pageRoot})`,
   );
 
   const copied = await cdp.evaluate(`(async () => {
