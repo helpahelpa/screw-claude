@@ -1,7 +1,11 @@
 /* THROWAWAY UI: original layouts plus additive Taste variants; no diagnostic logic. */
-const zh = location.pathname.startsWith('/zh');
+const locale = /^\/(zh|ru)(?:\/|$)/.exec(location.pathname)?.[1] || 'en';
+const localePath = locale === 'en' ? '/' : `/${locale}/`;
 const messages = {
   en: {
+    languageLabel: 'Language', mainNavigation: 'Main navigation', sectionNavigation: 'Section navigation',
+    checkDetails: 'Check details', scopeHeading: 'What gets checked', checking: 'Checking…',
+    copied: 'Copied', copyFailed: 'Copy failed', pointsShort: 'pts', other: 'other',
     title: 'screw/claude — Browser clarity', check: 'Check', how: 'How it works', faq: 'FAQ',
     eyebrow: 'A LITTLE CLARITY FOR YOUR BROWSER', headline: 'What does your browser', headlineEm: 'give away?',
     intro: 'Timezone, language, fonts. Small signals tell a story. See what yours says in one simple check.',
@@ -52,6 +56,9 @@ const messages = {
     signalDetails: ['The timezone exposed by your browser', 'Your preferred browser languages', 'Available regional font rendering', 'Your browser’s default Intl locale', 'The clock’s offset from UTC', 'An estimate from the user agent', 'An estimate of your device or OS', 'An estimate of OS rendering style']
   },
   zh: {
+    languageLabel: '语言', mainNavigation: '主导航', sectionNavigation: '章节导航',
+    checkDetails: '检测详情', scopeHeading: '检测信号', checking: '检查中…',
+    copied: '已复制', copyFailed: '复制失败', pointsShort: 'pts', other: 'other',
     title: 'screw/claude — 看清浏览器环境', check: '检测', how: '检测原理', faq: '常见问题',
     eyebrow: '让浏览器环境更清晰', headline: '你的浏览器，', headlineEm: '透露了什么？',
     intro: '时区、语言、字体。细小的信号也能勾勒出环境特征。一次简单检测，看清你的浏览器。',
@@ -85,9 +92,62 @@ const messages = {
     railTitle: '浏览器 / 检查器', railStatus: '本机环境', railCaption: '看清可见信息。', weightsNote: '权重合计为 100 分。', footerNote: '与 Anthropic 无关联。', fixtureNote: '示例数据 · 不执行检测',
     scanSteps: ['读取浏览器设置', '查看八项信号', '理解你的分数'], signalNames: ['时区', '语言偏好', '字体渲染', '默认区域', 'UTC 偏移', '浏览器类型', '设备类型', '表情风格'],
     signalDetails: ['浏览器提供的时区', '浏览器的首选语言', '区域字体的可用渲染', '浏览器默认的 Intl 区域', '本地时间与 UTC 的差值', '根据用户代理估计', '估计的设备或系统类型', '估计的系统渲染风格']
+  },
+  ru: {
+    languageLabel: 'Язык', mainNavigation: 'Основная навигация', sectionNavigation: 'Навигация по разделам',
+    checkDetails: 'Подробности проверки', scopeHeading: 'Что проверяется', checking: 'Проверяется…',
+    copied: 'Скопировано', copyFailed: 'Не удалось скопировать', pointsShort: 'бал.', other: 'другое',
+    title: 'screw/claude — Настройки браузера', check: 'Проверка', how: 'Как это работает', faq: 'Вопросы и ответы',
+    eyebrow: 'ЧУТЬ БОЛЬШЕ ЯСНОСТИ О ВАШЕМ БРАУЗЕРЕ', headline: 'Что раскрывает', headlineEm: 'ваш браузер?',
+    intro: 'Часовой пояс, языки, шрифты. Небольшие признаки складываются в общую картину. Посмотрите на неё за одну простую проверку.',
+    local: 'Данные остаются на устройстве', private: 'Аккаунт не нужен', section: 'Ваш браузер с первого взгляда',
+    sectionNote: 'Восемь признаков. Более ясная картина.', environment: 'СРЕДА БРАУЗЕРА',
+    ready: 'Можно начинать.', readyBody: 'Посмотрите, какие обычные настройки ваш браузер делает видимыми для сайтов.',
+    start: 'Проверить браузер', runtime: '8 проверок · около 5 секунд', awaiting: 'Ожидание проверки',
+    signals: 'Признаки', weight: 'ВЕС', findings: 'НАБЛЮДЕНИЯ', points: 'БАЛЛЫ',
+    running: 'Смотрим внимательнее.', runningBody: 'Проверяем настройки, из которых складывается среда браузера.',
+    runningLabel: 'ИДЁТ ПРОВЕРКА', progress: '3 из 8 проверок', currentCheck: 'Проверяем региональные настройки…',
+    completed: 'Проверка завершена', resultLabel: 'ОЦЕНКА СРЕДЫ', outOf: '/ 100', low: 'Низкий уровень', medium: 'Средний уровень', high: 'Высокий уровень',
+    lowHeading: 'Признаков немного.', mediumHeading: 'Несколько признаков выделяются.', highHeading: 'Более заметный набор признаков.',
+    lowBody: 'В этом примере совпало лишь несколько признаков с весом. Настройки браузера дают мало баллов.',
+    mediumBody: 'Несколько настроек влияют на оценку в этом примере. В подробностях видно, откуда взялся каждый балл.',
+    highBody: 'Несколько настроек дают высокий балл в этом примере. Высокая оценка не означает, что ваш аккаунт ограничен.',
+    partial: 'Частичный результат', partialBody: 'Отрисовка шрифтов недоступна. Показаны остальные семь проверок; пропущенная проверка не добавляет баллов.',
+    sample: 'Пример результата', sampleRunning: 'Пример прогресса', again: 'Проверить снова', share: 'Поделиться',
+    errorTitle: 'Проверка не завершилась.', errorBody: 'Проверка была прервана. Вы можете начать заново в любое время.', retry: 'Повторить',
+    unavailable: 'Недоступно', noFonts: 'Нет подходящих шрифтов', checked: 'Проверено', pending: 'Ожидание',
+    limit: 'Оценка признаков, а не вердикт об аккаунте.', limitBody: 'Настройки браузера не позволяют узнать, будет ли ограничен аккаунт.',
+    aboutEyebrow: 'РАЗБЕРИТЕСЬ В ПРОВЕРКЕ', aboutTitle: 'Проверка,', aboutEm: 'а не вердикт.',
+    aboutBody: 'Это снимок настроек браузера с учётом их веса. Он помогает понять, что видно сайтам, без догадок о внутренних решениях Claude.',
+    method: 'Как считается оценка', methodBody: 'Каждый признак добавляет баллы в пределах своего веса. Сумма составляет от 0 до 100. Низкий уровень: 0–30. Средний: 31–60. Высокий: 61–100. Признак считается совпавшим при силе от 0,25. Эти уровни описывают эвристические правила, а не вероятность.',
+    scope: 'Что видно при проверке', scopeBody: 'Проверяются часовой пояс, языки, отрисовка доступных шрифтов, региональные настройки, смещение UTC, тип браузера, тип устройства и предполагаемый стиль эмодзи ОС. Тип браузера и устройства определяется приблизительно.',
+    privacyTitle: 'Что остаётся приватным', privacyBody: 'Запланированная проверка выполняется на устройстве. Ей не нужны ваш аккаунт Claude, ключ API или переписки. Наблюдения остаются на устройстве, пока вы не решите поделиться сводкой. Этот прототип не собирает наблюдения.',
+    terminalEyebrow: 'ПОСМОТРИТЕ ЧУТЬ ГЛУБЖЕ', terminalTitle: 'За пределами браузера.', terminalBody: 'Настройки терминала могут отличаться. Эти необязательные команды помогут проверить то, что недоступно браузеру.',
+    terminalToggle: 'Проверки в терминале', unix: 'Для Unix-подобной оболочки. Выполняйте только те команды, которые хотите проверить.', copy: 'Копировать команду',
+    commandTitles: ['Адрес API и прокси', 'Время и локаль', 'Разрешение DNS'],
+    commandDescriptions: ['Посмотрите переменные адреса API и прокси в вашей оболочке.', 'Сравните время в оболочке, настройки Intl и системную локаль.', 'Посмотрите ответ DNS для домена API.'],
+    faqEyebrow: 'НЕСКОЛЬКО ВОПРОСОВ', faqTitle: 'Подробности без догадок.',
+    faqs: [
+      ['Зачем проверять часовой пояс?', 'Часовой пояс — одна из видимых браузеру настроек, которую обсуждают в сообщениях о проверках среды. Этот инструмент помогает её посмотреть. Он не может подтвердить, использует ли её сервис и каким образом.'],
+      ['Это та же проверка, что использует Claude?', 'Нет. Это независимые эвристические правила на основе видимых настроек браузера. Инструмент не обращается к внутренним системам Claude, а его оценка не воспроизводит внутренние решения сервиса.'],
+      ['Может ли доступ работать при высокой оценке?', 'Да. Оценка описывает набор признаков браузера, а не статус аккаунта. Высокая оценка совместима с обычным доступом.'],
+      ['Какие настройки влияют на результат?', 'Часовой пояс системы, порядок языков браузера, установленные шрифты, региональные настройки, браузер и операционная система могут влиять на наблюдения. Защита приватности или изменённая строка User-Agent могут сделать часть наблюдений неполной.'],
+      ['Почему проверки в терминале отдельно?', 'Веб-страница не может прочитать переменные прокси или настройки DNS вашей оболочки. Команды позволяют посмотреть их самостоятельно; страница не выполняет команды и не получает их вывод.'],
+      ['Что делать, если аккаунт ограничен?', 'Только сам сервис может объяснить ограничение аккаунта. Следуйте официальным рекомендациям Anthropic о мерах защиты, предупреждениях и обжаловании, а не делайте выводы по этой оценке.'],
+      ['Покидают ли данные моё устройство?', 'Запланированная проверка хранит наблюдения в памяти вашего устройства. Если вы решите поделиться, сводка отправится в выбранное место. Загрузка страницы всё равно создаёт обычные запросы к её серверу. Этот прототип не выполняет проверку и не использует аналитику.']
+    ],
+    support: 'Официальная поддержка', footer: 'Больше понимания. Меньше догадок.', prototype: 'ПРОТОТИП ИНТЕРФЕЙСА',
+    designNames: ['Бумага', 'Консоль', 'Фокус', 'Обзор', 'Отчёт'], preview: 'Состояние', states: ['Готово', 'Проверка', 'Низкая оценка', 'Средняя оценка', 'Высокая оценка', 'Частичный результат', 'Ошибка'],
+    prev: 'Предыдущий дизайн', next: 'Следующий дизайн', shareTitle: 'Поделитесь ясной картиной.', shareBody: 'Сводка вашей оценки. Исходные данные браузера остаются у вас.',
+    sharePlatforms: 'Поделиться в', copyText: 'Копировать текст для', saveImage: 'Сохранить изображение', close: 'Закрыть', shareSample: 'ПРИМЕР КАРТОЧКИ', matched: 'Совпавший признак', matchedPlural: 'Совпавших признаков',
+    unavailableNotice: 'Одна проверка недоступна', railTitle: 'БРАУЗЕР / ПРОВЕРКА', railStatus: 'Локальная среда', railCaption: 'Знайте, что видно.',
+    weightsNote: 'Сумма весов — 100 баллов.', footerNote: 'Не связано с Anthropic.', fixtureNote: 'Пример данных · проверка не выполняется',
+    scanSteps: ['Посмотрите настройки браузера', 'Изучите восемь признаков', 'Разберитесь в оценке'],
+    signalNames: ['Часовой пояс', 'Языки', 'Отрисовка шрифтов', 'Региональные настройки', 'Смещение UTC', 'Тип браузера', 'Тип устройства', 'Стиль эмодзи'],
+    signalDetails: ['Часовой пояс, который сообщает браузер', 'Предпочитаемые языки браузера', 'Отрисовка доступных региональных шрифтов', 'Региональные настройки Intl браузера', 'Смещение времени относительно UTC', 'Оценка по строке User-Agent', 'Предполагаемый тип устройства или ОС', 'Предполагаемый стиль отрисовки ОС']
   }
 };
-const t = messages[zh ? 'zh' : 'en'];
+const t = messages[locale];
 const params = new URLSearchParams(location.search);
 const variants = ['A', 'B', 'C', 'D', 'E'];
 const states = ['idle', 'running', 'low', 'medium', 'high', 'partial', 'error'];
@@ -122,15 +182,19 @@ const signalIcons = ['globe', 'language', 'font', 'locale', 'clock', 'browser', 
 const icon = (name, extra = '') => `<svg class="icon ${extra}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${iconPaths[name]}</svg>`;
 const escapeHtml = value => String(value).replace(/[&<>"']/g, char => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[char]));
 const fixtures = {
-  low: { score: 3, band: 'low', points: [0, 0, 0, 0, 0, 0, 0, 3], widths: [0, 0, 0, 0, 0, 0, 0, 60], values: ['Europe/London', 'en-GB, en', t.noFonts, 'en-GB', 'UTC+01:00', 'Chrome', 'Linux', 'Linux / other'], matched: [7] },
+  low: { score: 3, band: 'low', points: [0, 0, 0, 0, 0, 0, 0, 3], widths: [0, 0, 0, 0, 0, 0, 0, 60], values: ['Europe/London', 'en-GB, en', t.noFonts, 'en-GB', 'UTC+01:00', 'Chrome', 'Linux', `Linux / ${t.other}`], matched: [7] },
   medium: { score: 46, band: 'medium', points: [16, 10, 9, 5, 5, 0, 0, 1], widths: [62, 50, 50, 56, 71, 0, 0, 20], values: ['Asia/Taipei', 'zh-TW, en', 'PingFang TC', 'zh-TW', 'UTC+08:00', 'Safari', 'macOS', 'Apple'], matched: [0, 1, 2, 3, 4, 7] },
   high: { score: 77, band: 'high', points: [26, 20, 15, 9, 5, 0, 0, 2], widths: [100, 100, 83, 100, 71, 0, 0, 40], values: ['Asia/Shanghai', 'zh-CN, en', 'Microsoft YaHei', 'zh-CN', 'UTC+08:00', 'Chrome', 'Windows', 'Microsoft'], matched: [0, 1, 2, 3, 4, 7] },
-  partial: { score: 3, band: 'low', points: [0, 0, 0, 0, 0, 0, 0, 3], widths: [0, 0, 0, 0, 0, 0, 0, 60], values: ['Europe/London', 'en-GB, en', t.unavailable, 'en-GB', 'UTC+01:00', 'Chrome', 'Linux', 'Linux / other'], matched: [7] }
+  partial: { score: 3, band: 'low', points: [0, 0, 0, 0, 0, 0, 0, 3], widths: [0, 0, 0, 0, 0, 0, 0, 60], values: ['Europe/London', 'en-GB, en', t.unavailable, 'en-GB', 'UTC+01:00', 'Chrome', 'Linux', `Linux / ${t.other}`], matched: [7] }
 };
+
+function languageLinks(separator = '') {
+  return [['en', '/', 'EN', 'English'], ['zh', '/zh/', '中文', '简体中文'], ['ru', '/ru/', 'RU', 'Русский']].map(([code, path, label, name]) => `<a href="${path}${location.search}${location.hash}" lang="${code === 'zh' ? 'zh-CN' : code}" hreflang="${code === 'zh' ? 'zh-CN' : code}" aria-label="${label}: ${name}" ${locale === code ? 'aria-current="page"' : ''}>${label}</a>`).join(separator);
+}
 
 function header() {
   const languageQuery = location.search;
-  return `<header class="site-header"><a class="brand" href="/${languageQuery}" aria-label="screw/claude ${t.check}"><span class="brand-mark">${icon('mark')}</span><span>screw<span class="brand-slash">/</span>claude</span></a><nav class="top-nav" aria-label="${zh ? '主导航' : 'Main navigation'}"><a class="active" href="#check">${t.check}</a><a href="#how">${t.how}</a><a href="#faq">${t.faq}</a></nav><div class="header-end"><span class="prototype-tag">${t.prototype}</span><nav class="languages" aria-label="${zh ? '语言' : 'Language'}"><a href="/${languageQuery}" ${!zh ? 'aria-current="page"' : ''}>EN</a><span>/</span><a href="/zh/${languageQuery}" ${zh ? 'aria-current="page"' : ''}>中文</a></nav></div></header>`;
+  return `<header class="site-header"><a class="brand" href="${localePath}${languageQuery}" aria-label="screw/claude ${t.check}"><span class="brand-mark">${icon('mark')}</span><span>screw<span class="brand-slash">/</span>claude</span></a><nav class="top-nav" aria-label="${t.mainNavigation}"><a class="active" href="#check">${t.check}</a><a href="#how">${t.how}</a><a href="#faq">${t.faq}</a></nav><div class="header-end"><span class="prototype-tag">${t.prototype}</span><nav class="languages" aria-label="${t.languageLabel}">${languageLinks('<span>/</span>')}</nav></div></header>`;
 }
 
 function hero() {
@@ -158,8 +222,8 @@ function signals() {
     const active = state === 'running' && i === 3;
     const unavailable = state === 'partial' && i === 2;
     const hit = result && result.matched.includes(i);
-    const value = result ? result.values[i] : completed ? fixtures.low.values[i] : active ? (zh ? '检查中…' : 'Checking…') : t.signalDetails[i];
-    return `<div class="signal-row ${completed ? 'is-complete' : ''} ${active ? 'is-active' : ''} ${hit ? 'is-hit' : ''} ${unavailable ? 'is-unavailable' : ''}"><span class="signal-icon">${icon(signalIcons[i])}</span><div class="signal-text"><span class="signal-name">${t.signalNames[i]}</span><span class="signal-value" title="${escapeHtml(value)}">${escapeHtml(value)}</span></div><div class="signal-weight">${result ? `<span class="contribution ${hit ? 'has-points' : ''}">+${result.points[i]}</span><span class="max-weight">/ ${weight}</span><div class="mini-track"><span style="width:${result.widths[i]}%"></span></div>` : `<span>${weight}<small> pts</small></span>`}</div><span class="row-status">${unavailable ? icon('warning') : completed ? icon('check') : active ? '<span class="busy-dot"></span>' : '<span class="pending-dot"></span>'}</span></div>`;
+    const value = result ? result.values[i] : completed ? fixtures.low.values[i] : active ? t.checking : t.signalDetails[i];
+    return `<div class="signal-row ${completed ? 'is-complete' : ''} ${active ? 'is-active' : ''} ${hit ? 'is-hit' : ''} ${unavailable ? 'is-unavailable' : ''}"><span class="signal-icon">${icon(signalIcons[i])}</span><div class="signal-text"><span class="signal-name">${t.signalNames[i]}</span><span class="signal-value" title="${escapeHtml(value)}">${escapeHtml(value)}</span></div><div class="signal-weight">${result ? `<span class="contribution ${hit ? 'has-points' : ''}">+${result.points[i]}</span><span class="max-weight">/ ${weight}</span><div class="mini-track"><span style="width:${result.widths[i]}%"></span></div>` : `<span>${weight}<small> ${t.pointsShort}</small></span>`}</div><span class="row-status">${unavailable ? icon('warning') : completed ? icon('check') : active ? '<span class="busy-dot"></span>' : '<span class="pending-dot"></span>'}</span></div>`;
   }).join('')}</div><div class="signals-footer"><span>${result ? `${result.matched.length} ${result.matched.length === 1 ? t.matched.toLowerCase() : t.matchedPlural.toLowerCase()}` : t.weightsNote}</span><span>${result ? t.fixtureNote : t.awaiting}</span></div></div>`;
 }
 
@@ -192,7 +256,7 @@ function variantA() {
   return `${header()}<main class="main-content">${hero()}${workspace()}${about()}${terminal()}${faq()}</main>${footer()}`;
 }
 function variantB() {
-  return `${header()}<div class="console-shell"><aside class="console-rail"><p class="eyebrow">${t.railTitle}</p><div class="rail-title">${t.railCaption}</div><nav aria-label="${zh ? '章节导航' : 'Section navigation'}"><a href="#check" class="active"><span>01</span>${t.check}${icon('right')}</a><a href="#how"><span>02</span>${t.how}</a><a href="#faq"><span>03</span>${t.faq}</a></nav><div class="rail-bottom"><span class="tiny-dot"></span>${t.railStatus}<p>${t.local}<br>${t.private}</p></div></aside><main class="main-content"><div class="console-intro"><p class="eyebrow">${t.eyebrow}</p><h1>${t.headline} <em>${t.headlineEm}</em></h1><p>${t.intro}</p></div>${workspace()}${about()}${terminal()}${faq()}</main></div>${footer()}`;
+  return `${header()}<div class="console-shell"><aside class="console-rail"><p class="eyebrow">${t.railTitle}</p><div class="rail-title">${t.railCaption}</div><nav aria-label="${t.sectionNavigation}"><a href="#check" class="active"><span>01</span>${t.check}${icon('right')}</a><a href="#how"><span>02</span>${t.how}</a><a href="#faq"><span>03</span>${t.faq}</a></nav><div class="rail-bottom"><span class="tiny-dot"></span>${t.railStatus}<p>${t.local}<br>${t.private}</p></div></aside><main class="main-content"><div class="console-intro"><p class="eyebrow">${t.eyebrow}</p><h1>${t.headline} <em>${t.headlineEm}</em></h1><p>${t.intro}</p></div>${workspace()}${about()}${terminal()}${faq()}</main></div>${footer()}`;
 }
 function variantC() {
   return FocusVariant.render();
@@ -212,7 +276,7 @@ function shareDialog() {
 function render() {
   const taste = TasteVariants.isActive(variant);
   const focus = variant === 'C';
-  document.documentElement.lang = zh ? 'zh-CN' : 'en';
+  document.documentElement.lang = locale === 'zh' ? 'zh-CN' : locale;
   document.title = taste || focus ? t.title.replace(/[—–]/g, '-') : t.title;
   document.body.dataset.variant = variant;
   document.body.dataset.state = state;

@@ -48,9 +48,34 @@ window.TasteVariants = (() => {
       sampleProgress: '进度预览', sampleResult: '结果示例', ui: '界面预览', partial: '八项中有七项可用', footer: '独立的浏览器环境检查。',
       readyStatus: '未检查', checkedStatus: '已检查', matchedStatus: '已匹配', reportNote: '每一分，都有说明。',
       copyFor: '复制摘要文案', shareTo: '分享到', save: '保存图片', stateLabel: '状态'
+    },
+    ru: {
+      overview: 'Обзор', report: 'Отчёт', headline: 'Ваш браузер, всё на виду.',
+      reportHeadline: 'Ваши настройки на виду.',
+      intro: 'Посмотрите восемь признаков браузера и узнайте, что влияет на оценку среды.',
+      region: 'Язык и регион', system: 'Браузер и система', rendering: 'Отрисовка текста',
+      regionBody: 'Настройки языка, региона и текста, которые использует ваш браузер.',
+      systemBody: 'Время, браузер и операционная система, видимые веб-странице.',
+      groupRegion: 'Региональные настройки', groupSystem: 'Браузер и устройство',
+      maximum: 'Максимум баллов', contribution: 'Добавленные баллы', observed: 'Наблюдение',
+      checkCount: 'Восемь локальных проверок', points: 'баллов', maxShort: 'макс.', duration: 'Около 5 секунд', from: 'из',
+      readyNote: 'Посмотрите настройки браузера. Доступ к аккаунту не нужен.',
+      howHeading: 'Разберитесь, что означает оценка.',
+      howBody: 'У каждой проверки свой вес. Оценка описывает видимые настройки, а не статус вашего аккаунта Claude.',
+      terms: 'Проверьте терминал отдельно.',
+      termsBody: 'Браузеру недоступны переменные прокси и настройки DNS. Посмотрите их с помощью этих необязательных команд.',
+      faqHeading: 'Возможные вопросы.', shareTitle: 'Поделитесь краткой сводкой.',
+      shareBody: 'Ваша оценка и совпавшие признаки. Исходные данные браузера не включены.',
+      privacy: 'О приватности', inProgress: 'Идёт проверка', allDone: 'Все восемь проверок завершены',
+      dark: 'Включить тёмную тему', light: 'Включить светлую тему',
+      sampleProgress: 'Пример прогресса', sampleResult: 'Пример результата', ui: 'Прототип интерфейса',
+      partial: 'Доступны семь из восьми проверок', footer: 'Независимая проверка браузера.',
+      readyStatus: 'Не проверено', checkedStatus: 'Проверено', matchedStatus: 'Совпадение',
+      reportNote: 'Объяснение каждого балла.', copyFor: 'Копировать сводку для', shareTo: 'Поделиться в',
+      save: 'Сохранить изображение', stateLabel: 'Состояние'
     }
   };
-  const copy = () => texts[zh ? 'zh' : 'en'];
+  const copy = () => texts[locale];
   const clean = value => escapeHtml(String(value).replace(/[—–]/g, '-'));
   const glyph = name => `<svg class="taste-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="/taste-assets/tabler.svg#${name}"></use></svg>`;
   const isActive = key => key === 'D' || key === 'E';
@@ -64,7 +89,7 @@ window.TasteVariants = (() => {
     const c = copy();
     const query = location.search;
     const dark = effectiveTheme() === 'dark';
-    return `<header class="taste-header"><a class="taste-brand" href="/${query}" aria-label="screw/claude"><span class="taste-brand-mark">${icon('mark')}</span><span>screw<span class="taste-brand-slash">/</span>claude</span></a><nav class="taste-nav" aria-label="${zh ? '主导航' : 'Main navigation'}"><a href="#check">${t.check}</a><a href="#how">${t.how}</a><a href="#faq">${t.faq}</a></nav><div class="taste-header-tools"><button class="taste-icon-button" data-taste-action="theme" aria-label="${dark ? c.light : c.dark}" title="${dark ? c.light : c.dark}">${glyph(dark ? 'sun' : 'moon')}</button><nav class="taste-languages" aria-label="${zh ? '语言' : 'Language'}"><a href="/${query}" ${!zh ? 'aria-current="page"' : ''}>EN</a><a href="/zh/${query}" ${zh ? 'aria-current="page"' : ''}>中文</a></nav></div></header>`;
+    return `<header class="taste-header"><a class="taste-brand" href="${localePath}${query}" aria-label="screw/claude"><span class="taste-brand-mark">${icon('mark')}</span><span>screw<span class="taste-brand-slash">/</span>claude</span></a><nav class="taste-nav" aria-label="${t.mainNavigation}"><a href="#check">${t.check}</a><a href="#how">${t.how}</a><a href="#faq">${t.faq}</a></nav><div class="taste-header-tools"><button class="taste-icon-button" data-taste-action="theme" aria-label="${dark ? c.light : c.dark}" title="${dark ? c.light : c.dark}">${glyph(dark ? 'sun' : 'moon')}</button><nav class="taste-languages" aria-label="${t.languageLabel}">${languageLinks()}</nav></div></header>`;
   }
 
   function buttons() {
@@ -93,7 +118,7 @@ window.TasteVariants = (() => {
     const active = state === 'running' && index === 3;
     const unavailable = state === 'partial' && index === 2;
     const matched = !!result && result.matched.includes(index);
-    const value = result ? result.values[index] : completed ? fixtures.low.values[index] : active ? (zh ? '检查中…' : 'Checking…') : t.signalDetails[index];
+    const value = result ? result.values[index] : completed ? fixtures.low.values[index] : active ? t.checking : t.signalDetails[index];
     const points = result ? result.points[index] : weights[index];
     const status = unavailable ? t.unavailable : active ? c.inProgress : matched ? c.matchedStatus : completed ? c.checkedStatus : c.readyStatus;
     return `<div class="taste-reading ${matched ? 'has-match' : ''} ${active ? 'is-active' : ''} ${unavailable ? 'is-unavailable' : ''}" data-signal="${index}"><dt>${t.signalNames[index]}</dt><dd class="taste-reading-value ${completed ? 'is-observation' : ''}">${clean(value)}</dd><dd class="taste-reading-points"><strong>${result ? '+' : ''}${points}</strong><span>${result ? `${c.from} ${weights[index]}` : c.maxShort}</span><span class="taste-sr-only">${result ? c.contribution : c.maximum}</span></dd><dd class="taste-reading-status">${active ? glyph('refresh') : completed && !unavailable ? glyph('check') : ''}${status}</dd></div>`;

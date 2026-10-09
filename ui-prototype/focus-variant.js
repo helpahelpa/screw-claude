@@ -19,7 +19,7 @@ window.FocusVariant = (() => {
 
   function header() {
     const query = location.search;
-    return `<header class="site-header focus-header"><a class="brand" href="${zh ? '/zh/' : '/'}${query}" aria-label="screw/claude"><span class="brand-mark">${icon('mark')}</span><span>screw<span class="brand-slash">/</span>claude</span></a><nav class="languages" aria-label="${zh ? '语言' : 'Language'}"><a href="/${query}" ${!zh ? 'aria-current="page"' : ''}>EN</a><a href="/zh/${query}" ${zh ? 'aria-current="page"' : ''}>中文</a></nav></header>`;
+    return `<header class="site-header focus-header"><a class="brand" href="${localePath}${query}" aria-label="screw/claude"><span class="brand-mark">${icon('mark')}</span><span>screw<span class="brand-slash">/</span>claude</span></a><nav class="languages" aria-label="${t.languageLabel}">${languageLinks()}</nav></header>`;
   }
 
   function check() {
@@ -34,7 +34,7 @@ window.FocusVariant = (() => {
   function signalDetails() {
     const c = copy();
     const result = fixtures[state];
-    const heading = result || zh ? t.signals : 'What gets checked';
+    const heading = result ? t.signals : t.scopeHeading;
     if (!result && state !== 'running') return `<section id="signals" class="focus-section" aria-labelledby="focus-signals-title">${sectionTitle('focus-signals-title', heading, 'list-check')}<ul class="focus-scope-list">${t.signalNames.map((name, index) => `<li>${glyph(signalGlyphs[index])}<span>${name}</span></li>`).join('')}</ul></section>`;
     return `<section id="signals" class="focus-section" aria-labelledby="focus-signals-title">${sectionTitle('focus-signals-title', heading, 'list-check')}<dl class="focus-signals">${weights.map((weight, index) => {
       const completed = !!result || (state === 'running' && index < 3);
@@ -70,7 +70,7 @@ window.FocusVariant = (() => {
     const c = copy();
     const parts = c.headline.split(', ');
     const title = parts.length === 2 ? `${clean(parts[0])},<br><span>${clean(parts[1])}</span>` : clean(c.headline);
-    return `${header()}<main class="main-content focus-main"><section class="focus-introduction" aria-labelledby="focus-title"><h1 id="focus-title">${title}</h1><p class="focus-intro">${c.intro}</p>${check()}</section><section class="focus-information" aria-label="${zh ? '检测详情' : 'Check details'}">${signalDetails()}${explanation()}${terminal()}${faq()}</section></main><footer class="focus-footer">${t.footerNote}</footer>${stateControls()}`;
+    return `${header()}<main class="main-content focus-main"><section class="focus-introduction" aria-labelledby="focus-title"><h1 id="focus-title">${title}</h1><p class="focus-intro">${c.intro}</p>${check()}</section><section class="focus-information" aria-label="${t.checkDetails}">${signalDetails()}${explanation()}${terminal()}${faq()}</section></main><footer class="focus-footer">${t.footerNote}</footer>${stateControls()}`;
   }
 
   function shareDialog() {
@@ -93,10 +93,10 @@ window.FocusVariant = (() => {
     try {
       await navigator.clipboard.writeText(commands[index]);
       feedback = 'check';
-      message = zh ? '已复制' : 'Copied';
+      message = t.copied;
     } catch {
       feedback = 'alert-triangle';
-      message = zh ? '复制失败' : 'Copy failed';
+      message = t.copyFailed;
     }
     pendingCopies.delete(button);
     if (!button.isConnected) return;
